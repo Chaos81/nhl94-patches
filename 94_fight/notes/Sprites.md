@@ -142,5 +142,87 @@ SPAList:
 NHL93 - $4D8E
 NHL94 - $5B1C
 
+Path to retrieve the frame:
+
+Example: SPAFight (93) - $F8E
+
+- SPAlist address into a0
+- add SPA to a0 address ($4D8E+$F8E=$5D1C)
+- Move SPA attribute word into d1 (word located at current a0 + $10)
+- Move facedir into d0
+- Mult d0 by 2
+- add data at a0+d0 into a0 address (move SPF value into a0 address based on facedir and SPA)
+- Move SPANum into d0 (index into animation)
+- Add a0+d0 offset into d2. d2 now holds the new frame
+- If new frame (SPACnt is negative), move frame time into d0, check if frame is negative (last frame). negate if needed
+- d0 goes into SPAcnt
+- Check if glitch is 0 (4 frame delay to switch animations)
+- Move d2 into frame
+- Reset glitch to 4
+
+SPA attribute word for SPAFight - $5D1C + $10 = $5D2C. Flags are all 0
+In case of SPAFight, facedir 0-2, and 3-7 have the same offset on their SPAlist
+So, facedir 2 has offset of $12, facedir 3 has offset of $22
+$5D1C+$12=$5D2E      $5D1C+$22=$5D3E
+
+$5D2E - SPAfight animation frame list for facedir 0-2
+$5D3E - SPAfight animation frame list for facedir 3-7
+
+$5D2E list - $162,8,$163,8,$164,8,$165,$FFFA (frame, time) Last time is negative to denote last frame in animation
+$5D3E list - $162,8,$163,8,$164,8,$16A,$FFFA
+
+
+Now, addframe2 goes into play.
+
+Frame $162:
+$162 AND $7FF = $162
+$162 * 2 = $2C4
+$6FAF0 + $2C4 = $6FDB4
+
+Data at $6FDB4 = $2B46
+Data at $6FDB4 + 2 = $2B66
+Difference is $20
+$20 / 8 = 4. 4 - 1 = 3. 3 sprites in frame
+$6FAF0 + $2B46 = $72636, the location of the sprite data bytes
+
+Sprite 1:
+
+$FFF7 - X global    (-9)
+$FFE2 - Y global    (-30)
+$0698 - Tile offset
+$40 - Used for palette
+$07  - Sizetab byte (2x4 sprite)
+
+Tile data offset - $698 * $20 (32 decimal) = $D300
+Tile data starts at $3A3B0 + $D300 = $476B0
+
+Sprite 2:
+
+$0007 - X global    (7)
+$FFE2 - Y global    (-30)
+$18DA - Tile offset
+$40 - Used for palette
+$00 - Sizetab byte (1x1 sprite)
+
+Tile data offset - $18DA * $20 = $31B40
+Tile data starts at $3A3B0 + $31B40 = $6BEF0
+
+Sprite 3:
+
+$FFEF   (-17)
+$FFFA   (-6)
+$18D9
+$40
+$00
+
+$18D9 * $20 = $31B20
+$3A3B0 + $31B20 = $6BED0
+
+
+
+
+
+
+
 
 

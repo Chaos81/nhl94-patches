@@ -129,7 +129,18 @@ $9E724-$9EDC2 : Frame sprite data offsets
 $9EDC2: Start of sprite data bytes
 
 
+NHL93:
 
+$3A3A6 - pointer list
+$3A3A6 + 4 = offset to frame data table? $3574A ($6FAF0)\
+$3A3B0 - Spritetiles
+
+addframe2 is exactly like NHL94
+
+SPAList:
+
+NHL93 - $4D8E
+NHL94 - $5B1C
 
 
 

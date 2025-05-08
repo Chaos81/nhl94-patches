@@ -19,7 +19,7 @@ SprStrdat - offset $26: start of sprite tile data bytes (8 bytes per sprite)
 Sprite Tile Data Bytes:
 Byte 0-1: Y Global position
 Byte 2-3: sizetab and top 4 bits of tile data pointer
-Byte 4-5: bottom 11 bits of tile data pointer, and palette selection
+Byte 4-5: bottom 11 (0-10) bits of tile data pointer, H/V flip priority (bits 11+12), palette (13-15)
 Byte 6-7: X Global position
 
 Bytes 0-1: Y Global
@@ -56,20 +56,21 @@ Bytes 2-3: Sizetab bytes
 
 Byte 3: Not used, always 00
 
-Bytes 4-5: Data Pointer and Palette
+Bytes 4-5: Data Pointer, Flip and Palette
 
     Data Pointer:
         This points to the starting tile for the sprite. It is an offset from the start of the Sprite Tile Data (the address is stored in Spritetiles during the Buildframelist subroutine.)
-        First 11 bits are used for the data pointer (the value is ANDed with $7FF).
+        First 11 bits (0-10) are used for the data pointer (the value is ANDed with $7FF).
         Then the top 4 bits are taken from byte 2 , divided by 2, and ORed with the above result to get the full 15 bits of the pointer.
         The result is then sign-extended long word, multiplied by $20 (32 decimal), and used as an offset to the Spritetiles.
-
+    
         The address to the start to the sprite tiles, the sizetab value (# of tiles and layout) x 16 decimal, and the (previous sprite tiles (if more than 1 sprite in frame) + VRChar of Sort Cord) * 32 are all stored in the DMA list for VRAM transfer later on.
 
-
+    Flip:
+        Bits 11 and 12 are used for H and V flip of the sprite. This is used in the SetSFrame routine, when looking at attribute of the Sort Cord. If the lower nibble is 8 or higher, the sprite will be H flipped by default. If the upper nibble is odd, it will be V flipped by default. The SetSFrame will adjust for flipping it opposite if needed.
 
     Palette:
-        The last 5 bits are used for palette. The whole word size of Bytes 4-5 is EORed with the Sort Cord attribute. Then the result is ANDed with $F800 to pass the top 5 bits.
+        The last 2 bits are used for palette. The whole word size of Bytes 4-5 is EORed with the Sort Cord attribute. Then the result is ANDed with $F800 to pass the top 5 bits.
         Bit 0 of Sort Cord attribute+1 is checked, and if not 0, then bit 14 of the result above is checked. If bit 14 is set, then bit 13 is set for team 2 color, and it is stored in the Satt table
         If bit 14 is set, the highest nibble of the data pointer will be either a 4 or a B.
 
@@ -79,8 +80,8 @@ Bytes 6-7: X Global
 
 NHL94:
 
-GetHot accesses another ROM location for SprStrHot X and Y.
-Hotlist table - $A44C8 - $A4B53 ? ($68C long?)
+GetHot looks at another ROM location for SprStrHot X and Y.
+Hotlist table - $A44C8 - $A4B54 ($68C long)
 Pointer is SortCord frame * 2
 Y Hot Spot byte is (Hotlist + frame*2 + 1)
 X Hot spot byte is (Hotlist + frame*2)
@@ -89,7 +90,7 @@ X Hot spot byte is (Hotlist + frame*2)
 addframe2:
 
 $5DE7A - pointer list
-$5DE7A + 4 = offset to frame data table? $408AA ($9E724?)
+$5DE7E = offset to frame data table? $408AA ($9E724)
 
 Move frame into d4, pass top 5 bits.
 EOR d4 with attribute (used for palette later)
@@ -111,7 +112,7 @@ Move bytes 4-5 into d2 (tile pointer)
 Move byte 7 into d4 (sizetab byte)
 Use d4 as index to sizetab table, and put # tiles into d4
 
-Then it compare to previous d4 and branches if larger. If not, it will do a check if the tile is smaller, than branch. 
+Then it compares to previous d4 and branches if larger. If not, it will do a check if the tile is smaller, than branch. 
 If it's the same, and the data is pointing at the same tiles, it will branch to the dup code.
 
 Take d2, mult by 32 decimal. 
@@ -124,24 +125,30 @@ Byte 4-5: Tile offset
 Byte   6: Used when setting palette 
 Byte   7: Sizetab byte    
 
-$5DE84-$9E724?: Sprite tiles
-$9E724-$9EDC2 : Frame sprite data offsets
-$9EDC2: Start of sprite data bytes
+
+NHL94 addresses:
+
+$5B1C-$76B2: SPAList
+$5DE84-$9E724: Sprite tiles
+$9E724-$9EDC2: Frame sprite data offsets ($69E long)
+$9EDC2-$A44C8: Sprite data bytes
+$A44C8-$A4B54: Hotlist table ($68C long)
 
 
-NHL93:
+NHL93 addresses (v1.1 ROM):
+$4D8E-$6446: SPAList
+$3A3B0-$6FAF0: Sprite tiles
+$6FAF0-$70006: Frame sprite data offsets ($514 long)
+$70006-$743FC: Sprite data bytes
+$743FC-$74910: Hotlist table ($514 long, last 10 bytes are 0) 
 
 $3A3A6 - pointer list
-$3A3A6 + 4 = offset to frame data table? $3574A ($6FAF0)\
+$3A3A6 + 4 = offset to frame data table $3574A ($6FAF0)
 $3A3B0 - Spritetiles
 
 addframe2 is exactly like NHL94
 
-SPAList:
-
-NHL93 - $4D8E
-NHL94 - $5B1C
-
+-----------------------------------------
 Path to retrieve the frame:
 
 Example: SPAFight (93) - $F8E
@@ -217,12 +224,6 @@ $00
 
 $18D9 * $20 = $31B20
 $3A3B0 + $31B20 = $6BED0
-
-
-
-
-
-
 
 
 

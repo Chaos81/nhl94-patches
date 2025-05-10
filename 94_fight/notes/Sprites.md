@@ -128,18 +128,18 @@ Byte   7: Sizetab byte
 
 NHL94 addresses:
 
-$5B1C-$76B2: SPAList
-$5DE84-$9E724: Sprite tiles
+$5B1C-$76B2: SPAList ($1B96 long)
+$5DE84-$9E724: Sprite tiles ($408A0 long)
 $9E724-$9EDC2: Frame sprite data offsets ($69E long)
-$9EDC2-$A44C8: Sprite data bytes
+$9EDC2-$A44C8: Sprite data bytes ($5706 long)
 $A44C8-$A4B54: Hotlist table ($68C long)
 
 
 NHL93 addresses (v1.1 ROM):
-$4D8E-$6446: SPAList
-$3A3B0-$6FAF0: Sprite tiles
-$6FAF0-$70006: Frame sprite data offsets ($514 long)
-$70006-$743FC: Sprite data bytes
+$4D8E-$6446: SPAList ($16B8 long)
+$3A3B0-$6FAF0: Sprite tiles ($35740 long)
+$6FAF0-$70006: Frame sprite data offsets ($516 long)
+$70006-$743FC: Sprite data bytes ($43F6 long)
 $743FC-$74910: Hotlist table ($514 long, last 10 bytes are 0) 
 
 $3A3A6 - pointer list
@@ -225,5 +225,29 @@ $00
 $18D9 * $20 = $31B20
 $3A3B0 + $31B20 = $6BED0
 
+-------------------------------------------------------
 
+Moving tables in NHL94:
 
+SPAList, Frame sprite data offsets, Sprite data bytes, Hotlist table need to be moved.
+Spritetiles can probably stay, and new tiles will be added in the space that is freed up.
+Frame sprite data offsets will need to be updated and shifted based on how many frames are added.
+
+ROM subroutines that need to be patched:
+   - GetHot (the HotList table location needs updating)
+   - addframe2 (this might need updating if I decide to move the Spritetiles to free space)
+   - updateanim (the SPAList table location needs updating)
+ ROM locations that need to be patched:
+   - The offset to the Frame data offset table needs to be changed (this is at longword $5DE7E)
+
+SPA from 93 that need to be ported over to 94:
+
+SPAfight    $F8E - frames 
+SPAfhigh    $1004
+SPAflow     $1036
+SPAfgrab    $FC0
+SPAfhith    $1068
+SPAfhitl    $108A
+SPAfheld     $FE2
+SPAffall    $10CE
+SPAbfall    $10AC

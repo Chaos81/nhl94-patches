@@ -130,17 +130,17 @@ NHL94 addresses:
 
 $5B1C-$76B2: SPAList ($1B96 long)
 $5DE84-$9E724: Sprite tiles ($408A0 long)
-$9E724-$9EDC2: Frame sprite data offsets ($69E long)
-$9EDC2-$A44C8: Sprite data bytes ($5706 long)
-$A44C8-$A4B54: Hotlist table ($68C long)
+$9E724-$9EDC2: Frame sprite data offsets ($69E long) - first 2 bytes (0000) and last 2 bytes ($5DA6) are just used for start and end, so $69A bytes are used (845 frames)
+$9EDC2-$A44CA: Sprite data bytes ($5708 long, 2785 total sprites)
+$A44CA-$A4B54: Hotlist table ($68A long) - this is missing data for the last 8 frames? The last 8 frames are the extra arrows and stars for 3rd and 4th player (4-way play). They dont have hotspots.
 
 
 NHL93 addresses (v1.1 ROM):
 $4D8E-$6446: SPAList ($16B8 long)
 $3A3B0-$6FAF0: Sprite tiles ($35740 long)
-$6FAF0-$70006: Frame sprite data offsets ($516 long)
-$70006-$743FC: Sprite data bytes ($43F6 long)
-$743FC-$74910: Hotlist table ($514 long, last 10 bytes are 0) 
+$6FAF0-$70006: Frame sprite data offsets ($516 long) - first 2 bytes (0000) and last 2 bytes (490E) are just used for start and end, so $512 bytes are used (649 frames)
+$70006-$743FE: Sprite data bytes ($43F8 long, 2175 total sprites)
+$743FE-$74910: Hotlist table ($512 long) 
 
 $3A3A6 - pointer list
 $3A3A6 + 4 = offset to frame data table $3574A ($6FAF0)
@@ -251,3 +251,53 @@ SPAfhitl    $108A
 SPAfheld     $FE2
 SPAffall    $10CE
 SPAbfall    $10AC
+
+$F8E
+$FC0
+$FE2
+$1004
+$1036
+$1068
+$108A
+$10AC
+$10CE
+
+
+Adding data from NHL93 to 94:
+
+- Add the necessary SPA and SPF data to the end of SPAlist. Change frame labels of added SPA and SPF. - done
+- Add frame Hotspots XY to HotList - done
+- Add new sprite tiles to Spritetiles, get starting addresses of the tiles so they can be converted for the sprite data bytes
+- Add sprite data bytes, update tile offset
+- Add frames to frame table, update all frame offsets - done
+- Update the SPAs in the code for the required animations
+- Change SPFgloves to point to the right frame (SPFgloves is $161, set at $16E7C in 94)
+
+Spritetiles:
+- 4bpp format (1 byte per 2 pixels)
+- Tile size is 8x8 pixels (64 pixels, 32 bytes per tile)
+
+- 24 empty frames in 94 (353-376 decimal)
+- 24 fighting frames in 93 (353-376 decimal)
+- Frame 353 is the gloves
+
+
+SPAList_Fight.bin:
+
+0000 - SPAfight - $1B96
+0032 - SPAfgrab - $1BC8
+0054 - SPAfheld - $1BEA
+0076 - SPAfhigh - $1C0C
+00A8 - SPAflow  - $1C3E
+00DA - SPAfhith - $1C70
+00FC - SPAfhitl - $1C92
+011E - SPAffall - $1CB4
+0140 - SPAbfall - $1CD6
+
+Hotlist_Fight.bin:
+
+Starts with frame $161 (SPFgloves), ends with frame $178 (part of $SPAbfall)
+
+New Frame designation start: (93 to new 94)
+Frame 353 - Frame 846 ($34E)
+

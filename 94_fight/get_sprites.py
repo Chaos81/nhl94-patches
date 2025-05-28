@@ -12,19 +12,54 @@ class Anim:
                 self.offset = int(spa, 16)
                 self.facedir = []       # 8 entries(0-7 directions) of a list of dicts (frame, time keys)
                 self.attrib = 0
+                self.framelist = []
 
-def getFrmData(frame, file, sprfile):
-# Get Frame Data and Sprite Data for files given
-# # of sprites in frame = ((Next Frame offset - Current Frame offset) / 8) -1
+def getFrmData(file, sprdata, hotdata):
+# Get Data associated with frames
+# # of sprites in frame = ((Next Frame offset - Current Frame offset) / 8)
 
+       
         frmdata = []
         count = 0
+        sprcount = 0
+        sprlist = []
+        sprites = 0
+        size = os.path.getsize(file)    # size of file
+        numframes = (size) / 2 - 2   # # of frames (first frame and last frame are not real)
 
         with open(file, 'rb') as f:
-                f.seek(int(frame, 16) * 2, 0)   # move to frame offset
-                offset = f.read(2).hex()
-                nextoff = f.read(2).hex()
-                numsprites = ((int(nextoff, 16) - int(offset, 16)) / 8) - 1
+                f.seek(2)       # skip first 2 bytes (0000)
+                while count < numframes:
+                        # print ('Frame ' + str(count + 1) + ': ')
+                        offset = f.read(2).hex()
+                        nextoff = f.read(2).hex()
+                        numsprites = int(((int(nextoff, 16) - int(offset, 16)) / 8))
+                        sprtotal = numsprites
+                        # print('Sprites: ' + str(numsprites))
+                        sprites += numsprites
+                        sprlist = []
+                        while numsprites != 0:
+                                # Retrieve sprite data, store in list
+                                spr = sprdata[sprcount]
+                                sprlist.append(spr)
+                                # print(sprlist)
+                                sprcount += 1
+                                numsprites -= 1
+                        # Retrieve hotspot data
+                        hotspot = hotdata[count]
+                        
+                        # Store sprite data and hotspots in frmdata list
+                       
+                        frmdata.append(dict({'Offset': offset, 'Sprites': sprtotal, 'Sprite Data': sprlist, 'Hotspot Data': hotspot}))
+                        
+                        # Set variables for next run
+                        
+                        count += 1
+                        f.seek(-2, 1)   # move back 2 bytes on seek
+        # print(frmdata)
+        
+        return frmdata
+
                 
 
                 
@@ -42,11 +77,9 @@ def getSprData(file):
         sprdata = []
         count = 0
         size = os.path.getsize(file)    # size of file
-        print(size)
-        count = size / 8        # # of sprite data in file
-        print(count)
+        numsprites = (size) / 8        # # of sprite data in file
         with open(file, 'rb') as f:
-                while count > 1:        # last sprite data is garbage
+                while count < numsprites:        
                         xoff = f.read(2).hex()
                         yoff = f.read(2).hex()
                         toff = f.read(2).hex()
@@ -55,11 +88,32 @@ def getSprData(file):
                         layout = tilelayout[int.from_bytes(sizetab, "big")]
                         sprbytes = dict({'Xoffset': xoff, 'Yoffset': yoff, 'TilePtr': toff, 'HVFlippal': flippal, 
                                 'Sizetab': sizetab.hex(), 'Layout': layout})
-                        print(sprbytes)
+                        # print('Sprite Data ' + str(count) + ': '+ str(sprbytes))
                         sprdata.append(sprbytes)
-                        count -= 1
-                        
+                        count += 1
+                       
         return sprdata
+
+def getHotData(file):
+# Get HotSpot data for each frame
+# Byte 0 - X HotSpot
+# Byte 1 - Y HotSpot
+
+        hotdata = []
+        size = os.path.getsize(file)    # size of file
+        numhot = size / 2
+        count = 1
+        # print('# of HotSpots: ' + str(numhot))
+
+        with open(file, 'rb') as f:
+                while count <= numhot:
+                        xhot = f.read(1).hex()
+                        yhot = f.read(1).hex()
+                        hot = dict({'XHot': xhot, 'YHot': yhot})
+                        hotdata.append(hot)
+                        #print('Frame ' + str(count) + ': ' + str(hot))
+                        count += 1
+        return hotdata
 
 def getFrames(f, animlist):
 # Retrieve frame list for SPA, one direction at a time
@@ -86,49 +140,200 @@ def getFrames(f, animlist):
                         time = f.read(2)
                         time = int.from_bytes(time, "big", signed=True)
                         SPFlist.append(dict({'frame': frame, 'time': time}))
+
+                        # Add frame to framelist, keep list unique
+                        if frame not in animlist.framelist:
+                                animlist.framelist.append(frame)                   
                 
                 # Insert into facedir list
                 animlist.facedir.append(SPFlist)
-        
 
+def modFrmSprData(file, frmdata):
+# Collect frame data for fight frames (frames 353-376) and modify the FrmSprDataOff_Fight.bin accordingly
+        
+        count = 352     # Starting fight frame (glove/stick sprites)
+        countend = 375  # Ending of fight frames
+        spritecnt = 0
+        framecnt = 0
+
+        with open(file, 'rb+') as f:
+                f.seek(-2, 2)   # move to last 2 bytes of file
+                while count <= countend:
+                        off = int.from_bytes(f.read(2), "big")  # offset of this frame
+                        data = frmdata[count]
+                        sprites = data['Sprites']  # get sprite count
+                        newoff = off + (sprites * 8)  # 8 bytes per sprite
+                        #print('Frame: ' + str(count))
+                        #print('# of Sprites: ' + str(sprites))
+                        #print('Current Offset: ' + hex(off))
+                        #print('New Offset: ' + hex(newoff))
+                        f.write(newoff.to_bytes(2, "big"))
+                        f.seek(-2, 2)
+                        count += 1
+                        framecnt += 1
+                        spritecnt += sprites
+                
+                print ('Total new frames: ' + str(framecnt))
+
+                # Now, update the frame table offsets since the table got larger by spritecnt sprites
+                f.seek(2) # skip first 2 bytes in file (0000)
+                addtooff = framecnt * 2 # 2 bytes per frame
+                while chunk := f.read(2):
+                        off = int.from_bytes(chunk, "big")
+                        newoff = off + addtooff
+                        print('Old Offset: ' + hex(off))
+                        print('New Offset: ' + hex(newoff))
+                        f.seek(-2, 1) # move to beginning of read bytes so we can overwrite
+                        f.write(newoff.to_bytes(2, "big"))
+
+
+def modSprTileData(file, newfile, sprtilelist):
+# Retrieve Sprite Tile Data for sprites on tile list, add to new file
+# Data is 4bpp (2 pixels/byte). A standard 1x1 tile (8x8 pixels) = 32 bytes
+# Will create an updated tile offset and store it in a dict with the old tile offset
+
+        sprmod = []
+        sizetab = [1,2,3,4,2,4,6,8,3,6,9,12,4,8,12,16]
+        sprtile94 = 8261  # Length of 94 spritetiles (Spritetiles.bin) / 32
+
+        with open(file, 'rb') as f, open(newfile, 'rb+') as w:
+                f.seek(0)  # initial position
+                w.seek(0)  # initial position
+                for tileinfo in sprtilelist:
+                        # Cycle through tile offsets, grab data from file, add to newfile
+                        ptr =  tileinfo[0] * 32  # ptr * 32
+                        size = sizetab[tileinfo[1]] * 32  # num of tiles * 32 bytes
+                        f.seek(ptr)
+                        tile = f.read(size)
+                        pos = w.tell()
+                        newptr = sprtile94 + pos  # new offset
+                        sprmod.append((ptr, newptr))  # add tuple of pointers to be used to update frame sprite data
+                        size = w.write(tile)
+                        
+                        print('Sprite Tile starting at ' + hex(ptr) + ' written to new file at position ' + hex(pos))
+                        print('New Sprite Tile offset: ' + str(newptr))
+
+        return sprmod
+
+def modSprData(file, frmdata, sprmod):
+# Cycle through Sprite data, save in file with new tile offset
+
+        startfrm = 352 
+        endfrm = 375
+        count = startfrm
+
+        with open(file, 'rb+') as f:
+                f.seek(0)
+                while count <= endfrm:  # Cycle through frames for updating
+                        data = frmdata[count]
+                        # Cycle through sprite data bytes
+                        for sprite in data['Sprite Data']:
+                                ptr = int(sprite['TilePtr'], 16)  # Convert to int to make it easier to compare
+                                newptr = 0
+                                # Cycle through sprmod to match up tile offset
+                                for offsets in sprmod:
+                                        if ptr == offsets[0]:
+                                                newptr = offsets[1]       
+                        
 
 script_dir = os.path.dirname(__file__)
-print(script_dir)
 SPAList_path = os.path.join(script_dir, '93_Tables/SPAList.bin')
 FrmData_path = os.path.join(script_dir, '93_Tables/FrmSprDataOff.bin')
 Hotlist_path = os.path.join(script_dir, '93_Tables/Hotlist.bin')
 SprData_path = os.path.join(script_dir, '93_Tables/SprData.bin')
+Sprtile_path = os.path.join(script_dir, '93_Tables/Spritetiles.bin')
+
+FrmDataMod_path = os.path.join(script_dir, '93_Tables/FrmSprDataOff_Fight.bin')
+SprTileMod_path = os.path.join(script_dir, '93_Tables/Spritetiles_Fight.bin')
+SprDataMod_path = os.path.join(script_dir, '93_Tables/SprData_Fight.bin')
 
 print ("get_sprites.py Version 0.2")
 
-# Collect Sprite data and store it in a list of dicts
+# Collect SPAList and store it in list of dicts
 
+# Collect Sprite data and store it in a list of dicts
 sprdata = getSprData(SprData_path)
 
+# Collect hotspot data and store it in list of dicts
+hotdata = getHotData(Hotlist_path)
+
 # Collect frame data and store it in a list of dicts
-frmdata = getFrmData(FrmData_path, SprData_path)
+frmdata = getFrmData(FrmData_path, sprdata, hotdata)
 
-spa = 0
+# Modify the Frame Sprite Offset File for Fighting
+# modFrmSprData(FrmDataMod_path, frmdata)
 
-while spa != 'exit':
+spainput = 0
+
+while spainput != 'exit':
         # Input needed
-        spa = input('What is the SPA value? (type exit to quit)-> $')
-        if spa == 'exit':
+        frmlist = []
+        fightlist = ['0F8E', '0FC0', '0FE2', '1004', '1036', '1068', '108A', '10AC', '10CE']
+
+        sprtilelist = []
+
+        spainput = input('What is the SPA value? (type exit to quit)-> $')
+        if spainput == 'exit':
                 raise SystemExit
 
         # First, get the frames from the SPAList
-
+        print('Frame 161: ')
+        print('Frame Data: ')
+        glvframe = frmdata[352]
+        print(glvframe)
+        for sprdata in glvframe['Sprite Data']:
+                # Add sprite tile to tile list, keep list unique
+                        tiledata = int(sprdata['TilePtr'], 16), int(sprdata['Sizetab'], 16)
+                        if tiledata not in sprtilelist:
+                                sprtilelist.append(tiledata) 
+        print('Sprite Tiles used in this frame: ')
+        print(sprtilelist) 
+        
         with open(SPAList_path, 'rb') as f:
-                animlist = Anim(spa)
-                print('Offset: ' + str(animlist.offset))
-                # f.seek(offset + int(facedir)*2)       # seek to current location + offset + facedir*2
-                  
-                getFrames(f, animlist)
-                count = 0
-                for dir in animlist.facedir:
-                        print('SPF list for SPA: $' + str(spa) + ' and Direction: ' + str(count))
-                        print(dir)
-                        count+=1
+                for spa in fightlist:
+                        data = []
+                        animlist = Anim(spa)
+                        print('Offset: ' + str(animlist.offset))
+                        # f.seek(offset + int(facedir)*2)       # seek to current location + offset + facedir*2
+                        
+                        getFrames(f, animlist)
+                        count = 0
+                        for dir in animlist.facedir:
+                                print('SPF list for SPA: $' + str(spa) + ' and Direction: ' + str(count))
+                                print(dir)
+                                count+=1
+                        print('Frames used in this list: ')
+                        for frame in animlist.framelist:        # Print frame data for each frame used in animation
+                                print('Frame: ' + frame)
+                                data = frmdata[int(frame, 16) - 1]      # frmdata[0] = Frame 1
+                                print('Frame Data: ' + str(data))
+                                
+                                # Look for unique sprite tiles
+
+                                for sprdata in data['Sprite Data']:
+                                        # Add sprite tile to tile list, keep list unique
+                                        tiledata = int(sprdata['TilePtr'], 16), int(sprdata['Sizetab'], 16)
+                                        if tiledata not in sprtilelist:
+                                                sprtilelist.append(tiledata)
+
+                                
+                # print('Unique Sprite Tile Count: ')
+                # print(len(sprtilelist))
+                # print('Unique Sprite Tiles Pointers: ')
+                sprtilelist.sort()
+                # print(sprtilelist)
+                sprmod = modSprTileData(Sprtile_path, SprTileMod_path, sprtilelist)
 
 
-                
+
+
+
+
+
+        
+
+
+        
+
+
+

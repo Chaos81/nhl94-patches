@@ -26,7 +26,7 @@
 ;   - The offset to the Frame data offset table needs to be changed (this is at longword $5DE7E)
 ; 
 ; The above changes should allow the game to work like normal.
-; The amount of space to move the above tables is:
+; The amount of space to move the default above tables is:
 ; SPAList - $1B96
 ; Spritetiles - $408A0
 ; Frame sprite data offsets - $69E
@@ -46,13 +46,17 @@ moveLoc         equ $105A00     ; New location for tables
 
     org moveLoc                 ; arbitrary start position
 SPAList
-        incbin 94_Tables\SPAList.bin
+        ;incbin 94_Tables\SPAList.bin
+        incbin 94_Tables\SPAListFight.bin
 FrmSprDataOff
-        incbin 94_Tables\FrmSprDataOff.bin
+        ;incbin 94_Tables\FrmSprDataOff.bin
+        incbin 94_Tables\FrmSprDataOff_Fight.bin
 SprData
         incbin 94_Tables\SprData.bin
 HotList
-        incbin 94_Tables\Hotlist.bin
+        ;incbin 94_Tables\Hotlist.bin
+        incbin 94_Tables\Hotlist_FightAdj.bin
+
 
 ; Now, patch the ROM
 

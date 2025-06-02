@@ -267,11 +267,11 @@ Adding data from NHL93 to 94:
 
 - Add the necessary SPA and SPF data to the end of SPAlist. Change frame labels of added SPA and SPF. - done
 - Add frame Hotspots XY to HotList - done
-- Add new sprite tiles to Spritetiles, get starting addresses of the tiles so they can be converted for the sprite data bytes
-- Add sprite data bytes, update tile offset
+- Add new sprite tiles to Spritetiles, get starting addresses of the tiles so they can be converted for the sprite data bytes - done
+- Add sprite data bytes, update tile offset - done
 - Add frames to frame table, update all frame offsets - done
 - Update the SPAs in the code for the required animations
-- Change SPFgloves to point to the right frame (SPFgloves is $161, set at $16E7C in 94)
+- Change SPFgloves to point to the right frame (SPFgloves is $161, set at $16E7C in 94) - done
 
 Spritetiles:
 - 4bpp format (1 byte per 2 pixels)
@@ -300,4 +300,5 @@ Starts with frame $161 (SPFgloves), ends with frame $178 (part of $SPAbfall)
 
 New Frame designation start: (93 to new 94)
 Frame 353 - Frame 846 ($34E)
+Frame 353 - Frame 847 ($34F)
 

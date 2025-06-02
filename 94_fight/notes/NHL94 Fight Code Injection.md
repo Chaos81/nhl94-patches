@@ -53,5 +53,41 @@ Modifications to the 94 code:
 FFB10 - FFDFF - Free space in vanilla ROM (2EF free - 751 bytes)
 This is probably not enough. Will need to increase the ROM space.
 
+Fight Banner:
+93 - Subroutine at $A8C4
+
+A8C4 calls subroutines:
+lcfound2 (found in 94 already)
+$14E8C (94 equivalent $18A56)
+$A95A (not in 94)
+printz
+Framer
+print
+
+Uses variables:
+Home Team Struct
+PenBuf
+printx
+printy
+
+A95A calls subroutines:
+$14EC6 (94 - $18A90)
+appendz
+appstring
+
+Uses variables:
+SortCords
+Home Team Struct
+printx
+
+Injury:
+93 - Subroutine at $A8AE
+
+A8AE calls subroutines:
+printz
+eraser
+
+
+
 
 

@@ -589,3 +589,97 @@ loc_AA42:                               ; CODE XREF: assfwatch+26   j
                 bsr.w   skateto
                 bra.w   loc_BF26
 ; End of function assfwatch
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+sub_A8AE:                              
+                bsr.w   printz
+                ori.b   #0,d6
+                btst    d0,d0
+                moveq   #$28,d0 ; '('
+                moveq   #5,d1
+                move.w  #$7FF,d2
+                bra.w   eraser
+; End of function sub_A8AE
+
+
+sub_A8C4:                           
+                movem.l d0-d3/a0-a4,-(sp)
+                movea.w #(HmShots),a2
+                jsr     (lcfound2).l
+                adda.w  #$1A2,a2
+                jsr     (lcfound2).l
+                jsr     (sub_14E8C).l
+                movea.w #(PenBuf),a0
+                clr.w   d2
+loc_A8E8:                              
+                tst.w   (a0)+
+                bne.s   loc_A8E8
+                move.b  -3(a0),d0
+                clr.b   d3
+                bsr.w   sub_A95A
+                neg.b   d3
+                move.b  -5(a0),d0
+                bsr.w   sub_A95A
+                bsr.w   printz
+                ori.b   #$F,d6
+                btst    d0,d0
+                move.w  d2,d0
+                lsr.w   #1,d2
+                sub.w   d2,(printx).w
+                moveq   #5,d1
+                bsr.w   Framer
+                move.w  #2,(printy).w
+                tst.b   d3
+                bmi.w   loc_A92A
+                move.w  #4,(printy).w
+loc_A92A:                              
+                move.b  -3(a0),d0
+                bsr.w   sub_A95A
+                bsr.w   print
+                eori.w  #6,(word_FFB02A).w
+                move.b  -5(a0),d0
+                bsr.w   sub_A95A
+                bsr.w   print
+                bsr.w   printz
+                ori.b   #$F,a0
+                bchg    d1,0(a6,d7.w*2)
+                movem.l (sp)+,d0-d3/a0-a4
+                rts
+; End of function sub_A8C4
+
+
+sub_A95A:                              
+                movea.w #(SortCords),a1
+                andi.w  #$F,d0
+                asl.w   #7,d0
+                add.b   $74(a1,d0.w),d3
+                movea.w #(HmShots),a2
+                btst    #6,$62(a1,d0.w)
+                beq.w   loc_A97A
+                adda.w  #$1A2,a2
+loc_A97A:                               
+                move.b  $66(a1,d0.w),d0
+                ext.w   d0
+                jsr     (sub_14EC6).l
+                movea.w a1,a3
+                bsr.w   appendz
+                ori.b   #0,d4
+                movea.l $1E(a2),a1
+                adda.w  4(a1),a1
+                adda.w  (a1),a1
+                bsr.w   appstring
+                cmp.w   (a3),d2
+                bgt.w   loc_A9A6
+                move.w  (a3),d2
+loc_A9A6:                              
+                movea.w a3,a1
+                move.w  (a1),d0
+                lsr.w   #1,d0
+                neg.w   d0
+                addi.w  #$10,d0
+                move.w  d0,(printx).w
+                rts
+; End of function sub_A95A

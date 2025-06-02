@@ -1,8 +1,9 @@
 ; sprite_patch.asm - Add sprites from NHL93 to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.1
+; Current Version - 0.2
 ; Version History:
 ;   Version 0.1 - Initial version - relocate 94 tables that will be modified
+;   Version 0.2 - Add modified Fight tables
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -24,6 +25,7 @@
 ;   - updateanim (the SPAList table location needs updating)
 ; ROM locations that need to be patched:
 ;   - The offset to the Frame data offset table needs to be changed (this is at longword $5DE7E)
+;   - The Glovecord frame needs to be changed (word at $16E7C)
 ; 
 ; The above changes should allow the game to work like normal.
 ; The amount of space to move the default above tables is:
@@ -40,22 +42,31 @@
 GetHotPatch     equ $106F4      ; Move instruction to modify in GetHot
 updateanimPatch equ $AEFA       ; Move instruction to modify in updateanim
 frmdataPatch    equ $5DE7E      ; dc.l location for offset to Frame Data table
+glovecordPatch  equ $16E7C      ; dc.l location for GloveCord Frame
+
+Spritetiles     equ $5DE84      ; Location of Spritetiles (might change if Spritetiles are moved to expanded area, if so addframe2 needs to be changed)
+
 moveLoc         equ $105A00     ; New location for tables
 
 ;--------------------------------------------
 
+    org Spritetiles             ; Spritetiles position for overwriting
+        incbin 94_Tables\Fight\SpritetilesFight.bin
+
     org moveLoc                 ; arbitrary start position
 SPAList
         ;incbin 94_Tables\SPAList.bin
-        incbin 94_Tables\SPAListFight.bin
+        incbin 94_Tables\Fight\SPAListFight.bin
 FrmSprDataOff
         ;incbin 94_Tables\FrmSprDataOff.bin
-        incbin 94_Tables\FrmSprDataOff_Fight.bin
+        incbin 94_Tables\Fight\FrmSprDataOffFight.bin
 SprData
-        incbin 94_Tables\SprData.bin
+        incbin 94_Tables\Fight\SprDataFight.bin
 HotList
         ;incbin 94_Tables\Hotlist.bin
-        incbin 94_Tables\Hotlist_FightAdj.bin
+        incbin 94_Tables\Fight\HotlistFight.bin
+        
+
 
 
 ; Now, patch the ROM
@@ -68,3 +79,6 @@ HotList
 
     org frmdataPatch
     dc.l FrmSprDataOff-$5DE7A   ; Calculate new offset and store it
+
+    org glovecordPatch
+    dc.w $34E                   ; GloveCord Frame

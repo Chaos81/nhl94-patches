@@ -1,15 +1,17 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
-; Created by chaos with help from McMarkis
-; Current Version - 0.1
+; Created by chaos with help from McMarkis and AbdulBCRT
+; Current Version - 0.2
 ; Version History:
 ;   Version 0.1 - Initial version
+;   Version 0.2 - Added modifications due to Fight sprites addition
+;   Version 0.3 - Fix bugs with SetSPA jsrs
 
 ;--MACROS--
 	include	scripts\macros.mac
 
 ;--Load ROM from rom directory--
 	org 0
-		incbin rom\nhl94_2MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
+		incbin rom\nhl94_sprite.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
@@ -55,6 +57,12 @@ setInjuryType	equ $144AC
 skateto			equ $103C8
 check4check		equ $EACE
 sroot			equ $110BE
+box             equ $18A56
+lcfound2        equ $BB36
+Framer          equ $119B8
+print           equ $11BA4
+strstuff        equ $18A90
+
 
 afight			equ $14			; assfight offset on asstab
 afwatch			equ $15			; assfwatch offset on asstab
@@ -65,20 +73,31 @@ PenFighting		equ $26			; PenFighting offset on PenaltyList
 PenInst			equ $2A			; PenInst offset on PenaltyList
 
 ;--SPA Equates--
-SPAfight		equ $5D0		; Set to SPAskate, 93 original $F8E
-SPAfhigh		equ $B24		; Set to SPAsweepcheck, 93 original $1004
-SPAflow			equ $C2C		; Set to SPAhipchkr, 93 original $1036
-SPAfgrab		equ $1122		; Set to SPAhold, 93 original $FC0
-SPAfhith		equ $11E6		; Set to SPAtoddle, 93 original $1068
-SPAfhitl		equ $11E6		; Set to SPAtoddle, 93 original $108A
-SPAfheld		equ $6C6		; Set to SPAstop, 93 original $FE2
-SPAffall		equ $1776		; Set to SPAfallr?, 93 original $10CE
-SPAbfall		equ $17E8		; Set to SPAfalll?, 93 original $10AC
+;SPAfight		equ $5D0		; Set to SPAskate, 93 original $F8E
+;SPAfhigh		equ $B24		; Set to SPAsweepcheck, 93 original $1004
+;SPAflow		equ $C2C		; Set to SPAhipchkr, 93 original $1036
+;SPAfgrab		equ $1122		; Set to SPAhold, 93 original $FC0
+;SPAfhith		equ $11E6		; Set to SPAtoddle, 93 original $1068
+;SPAfhitl		equ $11E6		; Set to SPAtoddle, 93 original $108A
+;SPAfheld		equ $6C6		; Set to SPAstop, 93 original $FE2
+;SPAffall		equ $1776		; Set to SPAfallr?, 93 original $10CE
+;SPAbfall		equ $17E8		; Set to SPAfalll?, 93 original $10AC
 
+; SPAList_Fight.bin SPA values:
+
+SPAfight        equ $1B96
+SPAfgrab        equ $1BC8
+SPAfheld        equ $1BEA
+SPAfhigh        equ $1C0C
+SPAflow         equ $1C3E
+SPAfhith        equ $1C70
+SPAfhitl        equ $1C92
+SPAffall        equ $1CB4
+SPAbfall        equ $1CD6
 
 ;--SPF Equates
-SPFfight		equ $2A			; Set to SPFskate?, 93 original $162
-
+; SPFfight		equ $2A			; Set to SPFskate?, 93 original $162
+SPFfight        equ $34F        ; Set to Frame 847 based on the modified FrmSprData 
 
 ;--RAM variables--
 tmstruct		equ $FFFFC6CE			; Start of Home Team Struct
@@ -123,7 +142,8 @@ VDP_CNTR		equ $00C00008			; Frame counter
 
 ; Patch doinput subroutine - need to replace 10 bytes
 	org doinputPatch			; Set to patch location
-	jsr chkfightinput			; JSR to new code (6 bytes long)
+	jmp chkfightinput			; JMP to new code (6 bytes long)
+back:
 	nop							; Take up 4 bytes of space
 	nop
 
@@ -148,8 +168,8 @@ VDP_CNTR		equ $00C00008			; Frame counter
 
 chkfightinput:				; Check if fighting flag is set, if so, continue to fightinput
 	btst #0, pflags2(a3)	; Check fighting flag
-	bne fightinput			; Branch to fightinput if set
-	rts
+	bne.w fightinput		; Branch to fightinput if set
+	jmp back                ; JMP back to doinput
 
 cxchecks:					; Checks for interference, checking players, and fighting
 	jsr	checkint			; Check for interference
@@ -210,15 +230,15 @@ fightinput:
 	bset    #1,$63(a3)      ; set animation in progress
 	bne.w   rtss            ; exit if already set
 	move.w  d1,d2           ; move d1 into d2
-	move.w  #SPAfhigh,d1       ; #SPAfhigh into d1
+	move.w  #SPAfhigh,d1    ; #SPAfhigh into d1
 	btst    #5,d2           ; check C button press
-	jsr   	SetSPA          ; If pressed, start hit high anim
-	move.w  #SPAflow,d1       ; #SPAflow
+	bne.w   SPAjump         ; If pressed, start hit high anim
+	move.w  #SPAflow,d1     ; #SPAflow
 	btst    #4,d2           ; B button check
-	jsr   	SetSPA          ; If pressed, start hit low anim
-	move.w  #SPAfgrab,d1        ; #SPAfgrab
+	bne.w   SPAjump         ; If pressed, start hit low anim
+	move.w  #SPAfgrab,d1    ; #SPAfgrab
 	btst    #6,d2           ; A button pressed
-	jsr   	SetSPA          ; If pressed, start grab anim
+	bne.w   SPAjump         ; If pressed, start grab anim
 	bclr    #1,$63(a3)      ; clear anim in progress if none
 	rts
 
@@ -352,7 +372,7 @@ SF:
 	bset    #5,$63(a3)      ; set no player coll
 	bclr    #5,$62(a3)      ; clear animation lock
 	move.w  #SPAfight,d1    ; #SPAfight
-	jsr   	SetSPA			; set animation
+	jmp   	SetSPA			; set animation
 ; End of function SF
 
 
@@ -419,8 +439,8 @@ assfight:
 	btst    #5,$62(a3)      ; check if animation lock
 	bne.w   rtss            ; exit if so
 	tst.w   (PenCntDwn).w   ; Check penalty count
-	bpl.w	.new
-	jsr   	assnothing      ; assnothing if negative (countdown over)
+	bpl.w	.new            ; branch if positive or zero
+    jmp   	assnothing      ; assnothing if negative (countdown over)
 .new:
 	bclr    #1,$62(a3)      ; clear new assignment
 	beq.w   .nna            ; branch if this was already cleared (not first time through)
@@ -444,7 +464,7 @@ assfight:
 							
 	sub.w   d7,$46(a3)      ; sub frames elapsed from temp4
 	bcc.w   .nna2           ; branch if carry
-;	bsr.w   sub_A8C4        ; ???? - I believe this sets up fight banner
+;	bsr.w   banner          ; ???? - I believe this sets up fight banner
 .nna2:                           
 	tst.w   $44(a3)         ; test temp3
 	bmi.w   rtss            ; branch if negative
@@ -638,7 +658,7 @@ chkhit:
 	bset    #6,$63(a3)      ; set player caused a penalty? (not in 92)
 	move.w  #SPAffall,d1       ; #SPAffall
 	jsr   	SetSPA          ; set animation
-	bsr.w   noidea       	; ??? - might be used to display a message
+	bsr.w   clear       	; clears banner?
 	movea.w a3,a2           ; move a3 address into a2
 	jsr   	setInjuryType	; Set injury for player
 	move.w  #$112C,$66(a0,d1.w)	; ??? - changes player status to $112C
@@ -674,7 +694,7 @@ CwdFight:
 	rts
 ; End of function CwdFight
 
-noidea:                              
+clear:                              
 	jsr   	printz		; printz
 	ori.b   #0,d6
 	btst    d0,d0
@@ -682,7 +702,7 @@ noidea:
 	moveq   #5,d1
 	move.w  #$7FF,d2
 	jsr   	eraser		; eraser
-; End of function noidea
+; End of function clear
 
 assfwatch:
 ; Assignment for player who is watching fight
@@ -738,3 +758,93 @@ assfwatch:
 	jmp   	check4check		; look for checks
 ; End of function assfwatch
 
+SPAjump:
+    jmp SetSPA              ; jump to SetSPA
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+banner:                               
+                movem.l d0-d3/a0-a4,-(sp)
+                movea.w tmstruct,a2 ; Move home team struct into a2
+                jsr     lcfound2    ; Find line change line
+                adda.w  #$300,a2    ; Move to Away team struct
+                jsr     lcfound2    ; Find line change line
+                jsr     box         ; Make banner box
+                movea.w PenBuf,a0   ; Move Pen Buffer into a0
+                clr.w   d2          ; clear d2
+.n0:                              
+                tst.w   (a0)+       ; Test a0
+                bne.s   .n0         ; branch if not 0
+                move.b  -3(a0),d0   ; move a0-3 data into d0
+                clr.b   d3          ; clear d3
+                bsr.w   sub_A95A    ; Get name of player?
+                neg.b   d3          ; negate d3
+                move.b  -5(a0),d0   ; move a0-5 data into d0
+                bsr.w   sub_A95A    ; Get name of player?
+                
+                jsr   printz        ; print string following JSR
+                dc.b    0
+                dc.b    6
+                dc.b    $BF
+                dc.b    $F
+                dc.b    $1
+                dc.b    $0
+
+                btst    d0,d0
+                move.w  d2,d0
+                lsr.w   #1,d2
+                sub.w   d2,(printx).w
+                moveq   #5,d1
+                jsr   Framer
+                move.w  #2,(printy).w
+                tst.b   d3
+                bmi.w   loc_A92A
+                move.w  #4,(printy).w
+loc_A92A:                              
+                move.b  -3(a0),d0
+                bsr.w   sub_A95A
+                jsr   print
+                eori.w  #6,(printy).w
+                move.b  -5(a0),d0
+                bsr.w   sub_A95A
+                jsr   print
+                jsr   printz
+                ori.b   #$F,a0
+                bchg    d1,0(a6,d7.w*2)
+                movem.l (sp)+,d0-d3/a0-a4
+                rts
+; End of function banner
+->>>>
+
+sub_A95A:                              
+                movea.w #(SortCords),a1
+                andi.w  #$F,d0
+                asl.w   #7,d0
+                add.b   $74(a1,d0.w),d3
+                movea.w tmstruct,a2
+                btst    #6,$62(a1,d0.w)
+                beq.w   loc_A97A
+                adda.w  #$1A2,a2
+loc_A97A:                               
+                move.b  $66(a1,d0.w),d0
+                ext.w   d0
+                jsr     (sub_14EC6).l
+                movea.w a1,a3
+                bsr.w   appendz
+                ori.b   #0,d4
+                movea.l $1E(a2),a1
+                adda.w  4(a1),a1
+                adda.w  (a1),a1
+                bsr.w   appstring
+                cmp.w   (a3),d2
+                bgt.w   loc_A9A6
+                move.w  (a3),d2
+loc_A9A6:                              
+                movea.w a3,a1
+                move.w  (a1),d0
+                lsr.w   #1,d0
+                neg.w   d0
+                addi.w  #$10,d0
+                move.w  d0,(printx).w
+                rts
+; End of function sub_A95A

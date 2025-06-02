@@ -195,6 +195,7 @@ def modSprTileData(file, newfile, sprtilelist):
         sprmod = []
         sizetab = [1,2,3,4,2,4,6,8,3,6,9,12,4,8,12,16]
         sprtile94 = 8261  # Length of 94 spritetiles (Spritetiles.bin) / 32
+        count = 0
 
         with open(file, 'rb') as f, open(newfile, 'rb+') as w:
                 f.seek(0)  # initial position
@@ -206,35 +207,62 @@ def modSprTileData(file, newfile, sprtilelist):
                         f.seek(ptr)
                         tile = f.read(size)
                         pos = w.tell()
-                        newptr = sprtile94 + pos  # new offset
-                        sprmod.append((ptr, newptr))  # add tuple of pointers to be used to update frame sprite data
+                        newptr = sprtile94 + (pos / 32)  # new offset
+                        sprmod.append((tileinfo[0], int(newptr)))  # add tuple of pointers to be used to update frame sprite data
                         size = w.write(tile)
                         
-                        print('Sprite Tile starting at ' + hex(ptr) + ' written to new file at position ' + hex(pos))
-                        print('New Sprite Tile offset: ' + str(newptr))
+                        # print('Sprite Tile starting at ' + hex(ptr) + ' written to new file at position ' + hex(pos))
+                        # print('New Sprite Tile offset: ' + str(newptr))
+                        count += 1
 
+        print('Total Sprites added: ' + str(count))
         return sprmod
 
 def modSprData(file, frmdata, sprmod):
 # Cycle through Sprite data, save in file with new tile offset
+# Sprite tile data bytes:
+# Byte 0-1: X Global
+# Byte 2-3: Y Global
+# Byte 4-5: Tile offset
+# Byte   6: Used when setting palette 
+# Byte   7: Sizetab byte 
 
         startfrm = 352 
         endfrm = 375
         count = startfrm
-
+        bytecnt = 0
+        sprcount = 0
+       
         with open(file, 'rb+') as f:
                 f.seek(0)
                 while count <= endfrm:  # Cycle through frames for updating
-                        data = frmdata[count]
+                        data = frmdata[count]                      
                         # Cycle through sprite data bytes
                         for sprite in data['Sprite Data']:
+                                sprbytes = bytearray()  # Init sprbytes
                                 ptr = int(sprite['TilePtr'], 16)  # Convert to int to make it easier to compare
+                                # print('Old Ptr: ' + str(ptr))
                                 newptr = 0
+                                
                                 # Cycle through sprmod to match up tile offset
                                 for offsets in sprmod:
-                                        if ptr == offsets[0]:
-                                                newptr = offsets[1]       
-                        
+                                       
+                                        if ptr == (offsets[0]):
+                                                newptr = hex(offsets[1])[2:]  # Remove the 0x in front of hex string
+                                                # print('New Ptr: ' + str(newptr))
+                                
+                                # Insert sprite data bytes into file
+                                sprbytes += bytearray.fromhex(sprite['Xoffset'])
+                                sprbytes += bytearray.fromhex(sprite['Yoffset'])
+                                sprbytes += bytearray.fromhex(newptr)
+                                sprbytes += bytearray.fromhex(sprite['HVFlippal'])
+                                sprbytes += bytearray.fromhex(sprite['Sizetab'])
+                                print(sprbytes.hex())
+                                f.write(sprbytes)
+                                bytecnt += 1
+                        count += 1
+                print('Total Sprite Data Sets Added: ' + str(bytecnt))
+
 
 script_dir = os.path.dirname(__file__)
 SPAList_path = os.path.join(script_dir, '93_Tables/SPAList.bin')
@@ -323,7 +351,7 @@ while spainput != 'exit':
                 sprtilelist.sort()
                 # print(sprtilelist)
                 sprmod = modSprTileData(Sprtile_path, SprTileMod_path, sprtilelist)
-
+                modSprData(SprDataMod_path, frmdata, sprmod)
 
 
 

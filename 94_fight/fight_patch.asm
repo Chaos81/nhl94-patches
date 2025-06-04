@@ -1,10 +1,11 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.2
+; Current Version - 0.4
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
 ;   Version 0.3 - Fix bugs with SetSPA jsrs
+;   Version 0.4 - Add Fight banner
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -61,7 +62,10 @@ box             equ $18A56
 lcfound2        equ $BB36
 Framer          equ $119B8
 print           equ $11BA4
-strstuff        equ $18A90
+getname	        equ $18A90
+appstring		equ $11D9E
+appendz			equ $11D96
+
 
 
 afight			equ $14			; assfight offset on asstab
@@ -133,6 +137,9 @@ OptPen			equ $FFFFD056			; Penalty option: 0 = Off, 1 = On, 2 = On, no offsides
 
 VDP_CNTR		equ $00C00008			; Frame counter
 
+printx			equ $FFFFB028			; Used for printing text in boxes
+printy			equ $FFFFB02A
+printa			equ $FFFFB02C			; Attribute for printing
 
 ;------------
 ;--Patches--
@@ -464,7 +471,7 @@ assfight:
 							
 	sub.w   d7,$46(a3)      ; sub frames elapsed from temp4
 	bcc.w   .nna2           ; branch if carry
-;	bsr.w   banner          ; ???? - I believe this sets up fight banner
+	bsr.w   banner          ; sets up fight banner
 .nna2:                           
 	tst.w   $44(a3)         ; test temp3
 	bmi.w   rtss            ; branch if negative
@@ -632,7 +639,7 @@ chkhit:
 
 .FightFall:                              
 	movem.l a1,-(sp)        ; push to stack
-	move #PenBuf,a1 		; PenBuf
+	movea.l #PenBuf,a1 		; PenBuf
 .cont:                                
 	addq.w  #2,a1           ; add 2 to a1
 	cmpi.b  #$26,(a1)  		; compare 26 to a1
@@ -667,7 +674,7 @@ chkhit:
 .fall:                              
 	move.w  #SPAbfall,d1    ; #SPAbfall?
 	jsr   	SetSPA          ; set animation
-	move #tmstruct,a2		; Team struct
+	movea.l #tmstruct,a2	; Team struct
 	move.w  #$B,-(sp)       ; #SFXcrowdcheer
 	btst    #6,$62(a3)      ; check if home or away
 	bne.w   .3              ; branch if away
@@ -681,7 +688,7 @@ chkhit:
 CwdFight:
 ; Add to crowd level, adjust fighter's X velocity
 
-	addi.w  #$50,(crowdlevel).w ; 'P' ; add to crowd level
+	addi.w  #$50,(crowdlevel).w ; add to crowd level
 	addi.w  #$A,(CwdExciteLvl).w
 	moveq   #5,d0
 	add.w   $44(a0),d0      ; add temp3 to d0
@@ -701,7 +708,7 @@ clear:
 	moveq   #$28,d0 
 	moveq   #5,d1
 	move.w  #$7FF,d2
-	jsr   	eraser		; eraser
+	jmp   	eraser		; eraser
 ; End of function clear
 
 assfwatch:
@@ -762,89 +769,115 @@ SPAjump:
     jmp SetSPA              ; jump to SetSPA
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; print 
+; a1 = string macro
+; printx/y = x/y cordinate on map for printing
+; printm = map to print on
+; printa = attribute for characters
 
-banner:                               
+; string	\-$ab,$xx,$yy,'Sample!'\
+; a = map number (1-3)
+; b = color/priority (0-3 = color fam, prio off),(4-7 = color fam, prio on)
+; xx = x cord to print at
+; yy = y cord to print at
+
+banner:                
+
+; Number Player Name Abv
+;			vs
+; Number Player Name Abv
                 movem.l d0-d3/a0-a4,-(sp)
-                movea.w tmstruct,a2 ; Move home team struct into a2
+                movea.l #tmstruct,a2 ; Move home team struct into a2
                 jsr     lcfound2    ; Find line change line
-                adda.w  #$300,a2    ; Move to Away team struct
+                adda.w  #$364,a2    ; Move to Away team struct
                 jsr     lcfound2    ; Find line change line
                 jsr     box         ; Make banner box
-                movea.w PenBuf,a0   ; Move Pen Buffer into a0
+                movea.l #PenBuf,a0  ; Move Pen Buffer into a0
                 clr.w   d2          ; clear d2
 .n0:                              
                 tst.w   (a0)+       ; Test a0
                 bne.s   .n0         ; branch if not 0
                 move.b  -3(a0),d0   ; move a0-3 data into d0
                 clr.b   d3          ; clear d3
-                bsr.w   sub_A95A    ; Get name of player?
+                bsr.w   addinfo     ; Add JNo, Name, Team Abv to string
                 neg.b   d3          ; negate d3
                 move.b  -5(a0),d0   ; move a0-5 data into d0
-                bsr.w   sub_A95A    ; Get name of player?
+                bsr.w   addinfo     ; Add JNo, Name, Team Abv to string
                 
                 jsr   printz        ; print string following JSR
-                dc.b    0
+                dc.b    0			
                 dc.b    6
                 dc.b    $BF
                 dc.b    $F
                 dc.b    $1
                 dc.b    $0
 
-                btst    d0,d0
-                move.w  d2,d0
-                lsr.w   #1,d2
-                sub.w   d2,(printx).w
-                moveq   #5,d1
-                jsr   Framer
-                move.w  #2,(printy).w
-                tst.b   d3
-                bmi.w   loc_A92A
-                move.w  #4,(printy).w
-loc_A92A:                              
-                move.b  -3(a0),d0
-                bsr.w   sub_A95A
+                move.w  d2,d0		; move d2 into d0
+                lsr.w   #1,d2		; divide d2 by 2
+                sub.w   d2,(printx).w	; sub d2 from printx
+                moveq   #5,d1		; move 5 into d1
+                jsr   Framer		; Frame and fill - d0/d1 x/y size of rectangle
+                move.w  #2,(printy).w	; move 2 into printy	
+                tst.b   d3			; test d3
+                bmi.w   .getnames	; branch if d3 negative
+                move.w  #4,(printy).w	; move 4 into printy
+.getnames:                              
+                move.b  -3(a0),d0	; move data at a0-3 into d0
+                bsr.w   addinfo		; Add JNo, Name, Team Abv to string
+                jsr   print			
+                eori.w  #6,(printy).w	; EOR 6 with printy
+                move.b  -5(a0),d0		; move data at a0-5 into d0
+                bsr.w   addinfo
                 jsr   print
-                eori.w  #6,(printy).w
-                move.b  -5(a0),d0
-                bsr.w   sub_A95A
-                jsr   print
-                jsr   printz
-                ori.b   #$F,a0
-                bchg    d1,0(a6,d7.w*2)
+                jsr   printz		; add vs to string
+				
+				dc.b 0
+				dc.b   8
+				dc.b $BF
+				dc.b  $F
+				dc.b 3
+				dc.b $76 ; v
+				dc.b $73 ; s
+				dc.b   0
+                
                 movem.l (sp)+,d0-d3/a0-a4
                 rts
 ; End of function banner
-->>>>
 
-sub_A95A:                              
-                movea.w #(SortCords),a1
-                andi.w  #$F,d0
-                asl.w   #7,d0
-                add.b   $74(a1,d0.w),d3
-                movea.w tmstruct,a2
-                btst    #6,$62(a1,d0.w)
-                beq.w   loc_A97A
-                adda.w  #$1A2,a2
-loc_A97A:                               
-                move.b  $66(a1,d0.w),d0
-                ext.w   d0
-                jsr     (sub_14EC6).l
-                movea.w a1,a3
-                bsr.w   appendz
-                ori.b   #0,d4
-                movea.l $1E(a2),a1
-                adda.w  4(a1),a1
-                adda.w  (a1),a1
-                bsr.w   appstring
-                cmp.w   (a3),d2
-                bgt.w   loc_A9A6
-                move.w  (a3),d2
-loc_A9A6:                              
-                movea.w a3,a1
-                move.w  (a1),d0
-                lsr.w   #1,d0
-                neg.w   d0
-                addi.w  #$10,d0
-                move.w  d0,(printx).w
+addinfo:                              
+                movea.l #SortCords,a1	; move SortCord address into a1
+                andi.w  #$F,d0			; pass bottom 4 bits in d0
+                asl.w   #7,d0			; mult d0 by 128 dec
+                add.b   $74(a1,d0.w),d3	; add Fgt byte of d0 player to d3
+                movea.l #tmstruct,a2	; move Home Team struct into a2
+                btst    #6,$62(a1,d0.w)	; check if player is home or away
+                beq.w   .0				; branch if home
+                adda.w  #$364,a2		; move a2 to start of Away Team struct
+.0:                               
+                move.b  $66(a1,d0.w),d0	; move player offset into d0
+                ext.w   d0				; extend d0
+                jsr     getname			; append player's JNo and name to string
+                movea.w a1,a3			; move a1 address (mesarea) into a3
+                jsr	   	appendz			; append string below to a3
+                
+				dc.b	0
+				dc.b	4
+				dc.b	$20				; space
+				dc.b	0
+
+                movea.l $1E(a2),a1		; move address at tmstruct+30 into a1 (this will be address of Team Data in ROM)
+                adda.w  4(a1),a1		; add offset to Team info bytes to a1
+                adda.w  (a1),a1			; add length of Team Name to a1 (now at start of Team Abv bytes)
+                jsr	  	appstring		; add string a1 (Team Abv bytes) to string a3
+                cmp.w   (a3),d2			; compare data at a3 to d2 (believe this is length of a3 string)
+                bgt.w   .gt				; branch if d2 greater than
+                move.w  (a3),d2			; move data at a3 into d2
+.gt:                              
+                movea.w a3,a1			; move a3 address into a1
+                move.w  (a1),d0			; move data at a1 (length of string?) into d0
+                lsr.w   #1,d0			; divide d0 by 2
+                neg.w   d0				; negate d0
+                addi.w  #$10,d0			; add 16 dec to d0
+                move.w  d0,(printx).w	; move d0 into printx
                 rts
-; End of function sub_A95A
+; End of function addname

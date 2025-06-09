@@ -96,8 +96,8 @@ SPAfhigh        equ $1C0C
 SPAflow         equ $1C3E
 SPAfhith        equ $1C70
 SPAfhitl        equ $1C92
-SPAffall        equ $1CB4
-SPAbfall        equ $1CD6
+SPAbfall        equ $1CB4
+SPAffall        equ $1CD6
 
 ;--SPF Equates
 ; SPFfight		equ $2A			; Set to SPFskate?, 93 original $162
@@ -466,7 +466,7 @@ assfight:
 	move.w  #$FFFF,$46(a3)  ; move FFFF into temp4
 	cmpi.w  #2,$54(a3)      ; compare 2 to facedir
 	bne.w   .nna            ; branch if not equal
-	move.w  #$5A,$46(a3)	; move 90 dec into temp4
+	move.w  #$5A,$46(a3)	; move 90 dec into temp4 - this is the delay before the banner is displayed
 .nna:                                   
 							
 	sub.w   d7,$46(a3)      ; sub frames elapsed from temp4
@@ -658,12 +658,12 @@ chkhit:
 	jsr   	randomd0        ; RNG
 	cmp.b   $75(a0),d0      ; compare Chk value to d0
 ;	bgt.w   .fall        	; branch if greater than
-	bra.w 	.fall			; Added in to skip fight injury part	
+;	bra.w 	.fall			; Added in to skip fight injury part	
 ; This part has to do with injury from fight. Will need to be tested later
 
 	move.w  #$B4,(PenCntDwn).w ; move 180 dec into PenCntDwn - the rest of this might have to do with injured player
-	bset    #6,$63(a3)      ; set player caused a penalty? (not in 92)
-	move.w  #SPAffall,d1       ; #SPAffall
+	bset    #6,$63(a3)      ; causes toddle animation in playeracc
+	move.w  #SPAffall,d1    ; #SPAffall
 	jsr   	SetSPA          ; set animation
 	bsr.w   clear       	; clears banner?
 	movea.w a3,a2           ; move a3 address into a2
@@ -703,12 +703,16 @@ CwdFight:
 
 clear:                              
 	jsr   	printz		; printz
-	ori.b   #0,d6
-	btst    d0,d0
-	moveq   #$28,d0 
-	moveq   #5,d1
-	move.w  #$7FF,d2
-	jmp   	eraser		; eraser
+	dc.b 0
+    dc.b 6
+    dc.b $BF
+    dc.b 0
+    dc.b 1
+    dc.b 0
+	moveq   #$28,d0     ; x size of rectangle
+	moveq   #5,d1       ; y size of rectangle
+	move.w  #$7FF,d2    ; char word to fill with
+	jmp   	eraser		; fills rectangle with char
 ; End of function clear
 
 assfwatch:

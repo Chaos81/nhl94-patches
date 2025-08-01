@@ -1,11 +1,12 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.4
+; Current Version - 0.5
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
 ;   Version 0.3 - Fix bugs with SetSPA jsrs
 ;   Version 0.4 - Add Fight banner
+;   Version 0.5 - Add Fighting attribute displays in Team Roster and Edit Lines
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -32,12 +33,22 @@
 ; checkfight: This is called at 0x13B1E (bsr.w checkfight). A JSR will be needed here.
 ;    - The previous 2 lines of code are also bsrs (checkint and checkcheck). These 3 can be combined into a small subroutine, all turned into jsrs.
 ;
-; 
+; To display the Fighting attribute in the Team Rosters and Edit Lines screens, the Attribute headers from NHLPA93 need to be copied in and 
+; referenced. The headers contain data used by the code to look up the attribute for display. Also, the math for displaying the Fighting 
+; attribute needs to be changed at $8E3E.
+;
+; The pointers to the Attribute Header strings need to be updated as well. There are 2 spots for the Team Rosters and Edit Lines, 
+; and 2 spots for Shootout Mode. The Shootout Mode pointers point to + $16 from the start of the header strings.
 ;
 ;--Patch Equates--
 doinputPatch 	equ $B258		; Address in doinput to patch code
 checkcxPatch   	equ $13B16    	; Address in checkcx to patch code
 asstabPatch		equ $18DCC		; Address for assfight on asstab to patch code
+fgtdispPatch	equ $8E3E		; Address to change math for Fighting attribute display
+attdispPatch1	equ $84DD		; Pointers to update to new Attrib Disp strings
+attdispPatch2	equ $8BD9
+attdispPatch3	equ $FC85F		
+attdispPatch4	equ $FC891
 newCode			equ $105000		; Address in ROM where the new code will be patched in
 
 ;--NHL 94 Equates--
@@ -167,6 +178,10 @@ back:
 	dc.l assfight
 	dc.l assfwatch
 
+; Patch for Fighting attribute display math
+	org fgtdispPatch
+	moveq #$E,d1				; set d1 (divisor) to $E (max Fighting value)
+
 ;------------
 ;--New code--
 ;------------
@@ -191,7 +206,7 @@ fightinput:
 ; controller processing for fighting
 
 ; from doinput:
-; d0 = dpad
+; d0 = dpad 
 ; d1 = new buttons
 ; d2 = changed buttons
 ; d3 = held buttons
@@ -885,3 +900,4 @@ addinfo:
                 move.w  d0,(printx).w	; move d0 into printx
                 rts
 ; End of function addname
+

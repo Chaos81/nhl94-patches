@@ -1,9 +1,10 @@
 ; sprite_patch.asm - Add sprites from NHL93 to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.2
+; Current Version - 0.3
 ; Version History:
 ;   Version 0.1 - Initial version - relocate 94 tables that will be modified
 ;   Version 0.2 - Add modified Fight tables
+;   Version 0.3 - Move patches near the beginning of file to prep for incbin to fight_patch.asm
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -53,23 +54,7 @@ moveLoc         equ $105A00     ; New location for tables
     org Spritetiles             ; Spritetiles position for overwriting
         incbin 94_Tables\Fight\SpritetilesFight.bin
 
-    org moveLoc                 ; arbitrary start position
-SPAList
-        ;incbin 94_Tables\SPAList.bin
-        incbin 94_Tables\Fight\SPAListFight.bin
-FrmSprDataOff
-        ;incbin 94_Tables\FrmSprDataOff.bin
-        incbin 94_Tables\Fight\FrmSprDataOffFight.bin
-SprData
-        incbin 94_Tables\Fight\SprDataFight.bin
-HotList
-        ;incbin 94_Tables\Hotlist.bin
-        incbin 94_Tables\Fight\HotlistFight.bin
-        
-
-
-
-; Now, patch the ROM
+; Patch the ROM
 
     org GetHotPatch
     movea.l #HotList, a1        ; Replace move instruction with new one
@@ -82,3 +67,18 @@ HotList
 
     org glovecordPatch
     dc.w $34E                   ; GloveCord Frame
+
+
+    org moveLoc                 ; arbitrary start position
+
+SPAList
+        ;incbin 94_Tables\SPAList.bin
+        incbin 94_Tables\Fight\SPAListFight.bin
+FrmSprDataOff
+        ;incbin 94_Tables\FrmSprDataOff.bin
+        incbin 94_Tables\Fight\FrmSprDataOffFight.bin
+SprData
+        incbin 94_Tables\Fight\SprDataFight.bin
+HotList
+        ;incbin 94_Tables\Hotlist.bin
+        incbin 94_Tables\Fight\HotlistFight.bin

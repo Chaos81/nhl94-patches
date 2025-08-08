@@ -1,20 +1,27 @@
 ; sprite_patch.asm - Add sprites from NHL93 to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.3
+; Current Version - 0.4
 ; Version History:
 ;   Version 0.1 - Initial version - relocate 94 tables that will be modified
 ;   Version 0.2 - Add modified Fight tables
 ;   Version 0.3 - Move patches near the beginning of file to prep for incbin to fight_patch.asm
+;   Version 0.4 - Modify for inclusion to fight_patch.asm
 
+
+;---------This section not needed anymore, since it is in fight_patch.asm-------------
 ;--MACROS--
-	include	scripts\macros.mac
+;	include	scripts\macros.mac
 
 ;--Load ROM from rom directory--
-	org 0
-		incbin rom\nhl94_2MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
+;	org 0
+;		incbin rom\nhl94_2MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
 
 ;--Remove Checksum Code--
-	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
+;	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
+
+;-------------------------------------------------------------------------------------
+
+
 
 ;-----------
 ;--Equates--

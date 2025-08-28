@@ -15,7 +15,7 @@ A python script that takes the original Genesis NHL94 ROM (nhl94.bin) and expand
 
 - Add testing variables for fight conditions. These can be edited in the fight_patch.asm file.
 
-## How to use this patch:
+### How to use this patch:
 
 - Download the code from GitHub (use the Code button at the top of the repository).
 - Navigate to where you downloaded the code. Open the 94_fight folder.

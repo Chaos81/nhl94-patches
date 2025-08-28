@@ -13,7 +13,10 @@ A python script that takes the original Genesis NHL94 ROM (nhl94.bin) and expand
 
 ## 94_fight patch - Version 0.6 (currently in testing phase, not a finalized patch)
 
-- Add testing variables for fight conditions. These can be edited in the fight_patch.asm file.
+A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
+
+Current version updates:
+    - Add testing variables for fight conditions. These can be edited in the fight_patch.asm file. The values are set to default right now (NHLPA93 values).
 
 ### How to use this patch:
 
@@ -37,4 +40,5 @@ A python script that takes the original Genesis NHL94 ROM (nhl94.bin) and expand
 - Join the NHL94 community!
     - [NHL94.com](https://nhl94.com)
     - Link to NHL94 Discord - [Discord](https://discord.gg/KXJeQ6pyUc)
+    - Forum post discussing fighting - [NHL94 Forums](https://forum.nhl94.com/index.php?/topic/36385-adding-fighting-in-nhl94-genesis/)
      

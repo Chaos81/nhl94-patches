@@ -334,7 +334,7 @@ checkfight:
 	beq.w   .ex             ; exit if puck on faceoff
 ;	moveq   #$28,d0 	   	; 40 dec into d0 (code from 93)
     moveq   #ChkCntLimit,d0 ; move limit into d0
-	sub.w   #ChkCnt,d0   	; Sub CheckCnt from d0
+	sub.w   ChkCnt,d0   	; Sub CheckCnt from d0
 	bpl.w   .cont           ; branch if d0 positive
 	clr.w   d0
 .cont:                                
@@ -348,7 +348,8 @@ checkfight:
 	btst    #0,$63(a3)      ; check if fight bit set
 	beq.w   .ex             ; branch if not
 	clr.w   (ChkCnt).w      ; Clear ChkCnt
-    tst     (Loopskip).w    ; skip .loop if not equal
+    move.w  #Loopskip,d0
+    tst.w   d0              ; skip .loop if not equal
     bne.w   .cwd            
 	moveq   #$19,d0         ; # of players on team
 	move 	#HmChksFor,a0	; Home Team player ChksFor

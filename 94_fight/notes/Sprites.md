@@ -132,7 +132,7 @@ $5B1C-$76B2: SPAList ($1B96 long)
 $5DE84-$9E724: Sprite tiles ($408A0 long)
 $9E724-$9EDC2: Frame sprite data offsets ($69E long) - first 2 bytes (0000) and last 2 bytes ($5DA6) are just used for start and end, so $69A bytes are used (845 frames)
 $9EDC2-$A44CA: Sprite data bytes ($5708 long, 2785 total sprites)
-$A44CA-$A4B54: Hotlist table ($68A long) - this is missing data for the last 8 frames? The last 8 frames are the extra arrows and stars for 3rd and 4th player (4-way play). They dont have hotspots.
+$A44C8-$A4B54: Hotlist table ($68C long) - this is missing data for the last 8 frames? The last 8 frames are the extra arrows and stars for 3rd and 4th player (4-way play). They dont have hotspots. The first 2 bytes are not used. ($0805)
 
 
 NHL93 addresses (v1.1 ROM):

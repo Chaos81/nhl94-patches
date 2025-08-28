@@ -1,12 +1,13 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.5
+; Current Version - 0.6
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
 ;   Version 0.3 - Fix bugs with SetSPA jsrs
 ;   Version 0.4 - Add Fight banner
 ;   Version 0.5 - Include sprite_patch.asm, add Fighting attribute displays
+;   Version 0.6 - Add testing variables
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -17,6 +18,41 @@
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
+
+;---------------------
+;--Testing Variables--
+;---------------------
+; These variables are used for testing fighting. They affect how often a fight will occur, and limit who can start a fight.
+
+; ChkCntLimit - Value used in calculation to determine if there is enough total Checks to start a fight. Max is 128 decimal.
+;               ChkCntLimit = Total checks needed * 2
+
+ChkCntLimit     equ 40         ; Default is $28 or 40 decimal
+
+; StartFgtAtt - The minimum fight attribute needed to start a fight. Max is 15 decimal.
+
+StartFgtAtt     equ 10         ; Default is $A or 10 decimal
+
+; MinFgtAtt - The minimum fight attribute needed TO fight. Min is 0, max is 15 decimal.
+
+MinFgtAtt       equ 2          ; Default is 2
+
+; MinChksF - The minimum amount of ChksF for starting a fight (also depends on Fight attribute of player). Max is 255 decimal.
+;            MinChksF = ChksF needed * 2  
+
+MinChksF        equ 16         ; Default is $10 or 16 decimal
+
+; Loopskip - When set to something other than 0, will skip the loop that clears out the ChksF before each fight
+
+Loopskip        equ 0          ; Default is 0
+
+; InjRNG - The maximum value used to role the dice for injury once fight is over. Higher value = less chance of injury. Max is 255.
+
+InjRNG          equ 60         ; Default is $3C, or 60 decimal
+
+
+
+
 
 ;-----------
 ;--Equates--
@@ -296,14 +332,15 @@ checkfight:
 	move.w  $36(a0),d0      ; move assnum into d0
 	cmpi.b  #pfaceoff,$38(a0,d0.w) ; compare pfaceoff to puck's assignment
 	beq.w   .ex             ; exit if puck on faceoff
-;	moveq   #$28,d0 	   	; 40 dec into d0
-	moveq	#$1, d0			; for testing purposes
-	sub.w   ChkCnt,d0   	; Sub CheckCnt from d0
+;	moveq   #$28,d0 	   	; 40 dec into d0 (code from 93)
+    moveq   #ChkCntLimit,d0 ; move limit into d0
+	sub.w   #ChkCnt,d0   	; Sub CheckCnt from d0
 	bpl.w   .cont           ; branch if d0 positive
 	clr.w   d0
 .cont:                                
 	lsr.w   #2,d0           ; divide by 2
-	addi.w  #$A,d0          ; add 10 dec to d0
+;	addi.w  #$A,d0          ; add 10 dec to d0 (code from 93)
+    addi.w  #StartFgtAtt,d0
 	bsr.w   ChkFightValue
 	exg     a2,a3
 	bsr.w   ChkFightValue
@@ -311,14 +348,15 @@ checkfight:
 	btst    #0,$63(a3)      ; check if fight bit set
 	beq.w   .ex             ; branch if not
 	clr.w   (ChkCnt).w      ; Clear ChkCnt
+    tst     (Loopskip).w    ; skip .loop if not equal
+    bne.w   .cwd            
 	moveq   #$19,d0         ; # of players on team
 	move 	#HmChksFor,a0	; Home Team player ChksFor
 .loop:                                  
-	clr.b   $364(a0)        ; clears ChksF array
-							; when I use this offset in 94, it leads to ChksFor array
-	clr.b   (a0)+
+	clr.b   $364(a0)        ; clears ChksF of Away Team player
+	clr.b   (a0)+           ; clears ChksF of Home Team player
 	dbf     d0,.loop
-
+.cwd:
 	addi.w  #$3E8,(crowdlevel).w ; add 1000 dec to crowd
 	addi.w  #$23,(CwdExciteLvl).w ; add to crowd excite lvl
 	bclr    #2,(sflags).w   ; clear pass dir mode
@@ -400,10 +438,11 @@ SF:
 
 ChkFightValue:
 ; Lines commented for testing purposes                          
-;	cmp.b   $74(a3),d0      ; checks fight value with d0
-;	bhi.w   rtss            ; exit if d0 is higher
-;	cmpi.b  #2,$74(a2)      ; compare if fight value is 2
-;	blt.w   rtss            ; exit if less
+	cmp.b   $74(a3),d0      ; checks fight value with d0
+	bhi.w   rtss            ; exit if d0 is higher
+;	cmpi.b  #2,$74(a2)      ; compare if fight value is 2 (code from 93)
+    cmpi.b  #MinFgtAtt,$74(a2) ; compare if fight value is less than MinFgtAtt
+	blt.w   rtss            ; exit if less
 	clr.w   d1
 	move.b  $66(a2),d1      ; a2's player roster offset into d1
 	move 	#tmstruct,a0 	; Home Team bytes			
@@ -415,17 +454,18 @@ ChkFightValue:
 	move.b  $11C(a0),d1     ; moving player's ChksFor into d1
 	asl.b   #1,d1			; mult by 2
 	neg.b   d1				; negate d1
-	addi.b  #$10,d1			; add $10 to d1
+;	addi.b  #$10,d1			; add $10 to d1 (code from 93)
+    addi.b  #MinChksF,d1    ; add MinChksF to d1
 	cmp.b   $74(a2),d1      ; compare a2's fight value to d1
-;	bgt.w   rtss            ; exit if d1 is greater than
+	bgt.w   rtss            ; exit if d1 is greater than
 	bset    #0,$63(a2)      ; set fight bit a2
 	bset    #0,$63(a3)      ; set fight bit a3
 	bne.w   rtss            ; exit if set already
 	tst.w   (OptPen).w 		; Check if penalties are off
 	beq.w   rtss			; exit if so
-	move.w  (VDP_CNTR).l,d0 ; a little randomness with the frame counter
+	move.w  (VDP_CNTR).l,d0 ; a little randomness with the frame counter for Instigator
 	andi.w  #3,d0           ; pass first 2 bits
-;	bne.w   rtss            ; exit if first 2 bits of frame counter aren't 0
+	bne.w   rtss            ; exit if first 2 bits of frame counter aren't 0 (No Instigator penalty)
 	movea.l a3,a4
 	moveq   #5,d0           ; set loop iterator
 	move 	#SortCords,a3 	; Home Player structs
@@ -559,6 +599,7 @@ assfight:
 	rts
 ; End of function assfight
 ; ---------------------------------------------------------------------------
+
 .a1:
 	dc.w SPAfgrab          	; SPAfgrab
 	dc.w SPAfhigh           ; SPAfhigh
@@ -669,12 +710,13 @@ chkhit:
 	move.w  #$FFFF,$44(a0)  ; move -1 into temp3
 	addi.w  #$258,(crowdlevel).w ; add to crowd
 	addi.w  #$1E,(CwdExciteLvl).w ; add to crowd excite
-	moveq   #$3C,d0    		; move 60 dec into d0
+;	moveq   #$3C,d0    		; move 60 dec into d0 (code from 93)
+    moveq   #InjRNG,d0      ; Value for Injury RNG
 	jsr   	randomd0        ; RNG
 	cmp.b   $75(a0),d0      ; compare Chk value to d0
-;	bgt.w   .fall        	; branch if greater than
-;	bra.w 	.fall			; Added in to skip fight injury part	
-; This part has to do with injury from fight. Will need to be tested later
+	bgt.w   .fall        	; branch if greater than
+;	bra.w 	.fall			; Added in for testing to skip fight injury part	
+; This part has to do with injury from fight
 
 	move.w  #$B4,(PenCntDwn).w ; move 180 dec into PenCntDwn - the rest of this might have to do with injured player
 	bset    #6,$63(a3)      ; causes toddle animation in playeracc
@@ -683,7 +725,7 @@ chkhit:
 	bsr.w   clear       	; clears banner?
 	movea.w a3,a2           ; move a3 address into a2
 	jsr   	setInjuryType	; Set injury for player
-	move.w  #$112C,$66(a0,d1.w)	; ??? - changes player status to $112C
+	move.w  #$112C,$66(a0,d1.w)	; ??? - changes player status to $112C (Injured Game - Fighting)
 	move.w  #3,(InjCntDown).w	; set InjCntDown
 	bra.w   .ex
 .fall:                              
@@ -900,6 +942,9 @@ addinfo:
     move.w  d0,(printx).w	; move d0 into printx
     rts
 ; End of function addname
+
+
+
 
 ;------ Include sprite_patch.asm ------
     include sprite_patch.asm                ; Add updated sprites and animations, move and update tables associated with sprites and animations

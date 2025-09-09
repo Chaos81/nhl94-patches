@@ -24,18 +24,18 @@
 ; These patch equates are used for patching the existing code.
 ; ROM subroutines that need to be patched:
 ;   - InitSaveRAM ($1A050) - Looks like it loads to Save RAM and tests it
-;   - ReadSaveRAM ($1A244) - Read from Save RAM
-;   - WriteSaveRAM ($1A1E4) - Writes to Save RAM
+;   - ReadSRAM ($1A244) - Read from Save RAM
+;   - WriteSRAM ($1A1E4) - Writes to Save RAM
 ;
 ; Note: These subroutines will need some code to be moved in order to hijack, because of the JSR instruction size. The removed code will be run in the new subroutines:
-; InitSaveRAM: This is called during the Begin subroutine, when the game first loads.
+; InitSRAM: This is called during the Begin subroutine, when the game first loads.
 ;				It writes to Save RAM to test, or clears all Save RAM when a button combination is pressed.
 ;		- This will need to be re-written and a JSR added in its original location.
 ;
-; ReadSaveRAM: This is called to access Save RAM.
+; ReadSRAM: This is called to access Save RAM.
 ;		- This will need to be re-written and a JSR added in its original location.
 ;
-; WriteSaveRAM: This is called to write to Save RAM.
+; WriteSRAM: This is called to write to Save RAM.
 ;		- This will need to be re-written and a JSR added in its original location.
 ;
 ;
@@ -46,7 +46,14 @@ writeSRAMPatch	equ $1A1E4
 
 ;--NHL 94 Equates--
 ReadJoy1		equ $11340
-ClearRAM		equ $1A14E
+ValidateSRAM	equ $1A14E
+ClearSRAM		equ $1A19C
+vcountwaitjsr	equ $1A140
 
 ;--RAM Variables--
-vbint			equ $FFFFB03A
+vbint			equ $FFFFB03A	; address of vblank interrupt code
+ValidSRAM		equ $FFFFD458	; Flag if SRAM is OK
+
+;--VDP Registers--
+VDP_CTRL		equ $00C00004	; VDP control register
+VDP_DATA		equ $00C00000	; VDP data

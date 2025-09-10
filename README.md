@@ -1,21 +1,34 @@
 # nhl94-patches
  Patches for adding/changing the NHL94 ROM
 
- 94_expand - A python script that takes the original Genesis NHL94 ROM (nhl94.bin) and expands it to 2MB (nhl94_2MB.bin) while also removing the checksum and updating the ROM Header.
+ 94_expand - WIP. A patch to expand any NHL94 ROM to 3MB or 4MB.
 
  94_fight - WIP. A patch to the original NHL94 Genesis ROM to add the fighting code from NHLPA93.
 
-## 94_expand - Version 0.1
+## 94_expand - Version 0.1 (currently in testing phase, not a finalized patch)
 
-A python script that takes the original Genesis NHL94 ROM (nhl94.bin) and expands it to 2MB (nhl94_2MB.bin) while also removing the checksum and updating the ROM Header.
+94_to_3MB.bat - Patch to expand to 3MB
+94_to_4MB.bat - Patch to expand to 4MB
+
+Currently, the ROM you want to patch needs to be copied to the 94_expand folder and renamed as "temp.bin" (no quotes).
+I plan on making a python script to make this process easier.
+
+Expanding is easy, as it just pads the ROM to the size with $FF bytes. The hard part is dealing with SRAM (Save RAM).
+
+SRAM is mapped to $200000 address range in the Genesis/MegaDrive (2MB range). A hardware flag can be used to switch out SRAM for ROM data and vice-versa when needed.
+The script modifies the 94 code that writes or reads to SRAM to use this flag, and moves this modified code to a new location.
+The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-
-## 94_fight patch - Version 0.6 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.7 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
+    - Modified patch to move code into the upper 2MB ROM range (using a 3MB or 4MB ROM for patching now). This allows compatibility with ROM hacks.
+    - Instead of overwriting the whole Sprite tileset, modify to only add the fighting sprite tiles to the existing tileset, to keep from overwriting sprite hacks.
+
+Previous version updates:
     - Add testing variables for fight conditions. These can be edited in the fight_patch.asm file. The values are set to default right now (NHLPA93 values).
 
 ### How to use this patch:

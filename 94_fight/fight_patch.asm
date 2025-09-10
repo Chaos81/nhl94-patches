@@ -1,6 +1,6 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.6
+; Current Version - 0.7
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
@@ -8,13 +8,14 @@
 ;   Version 0.4 - Add Fight banner
 ;   Version 0.5 - Include sprite_patch.asm, add Fighting attribute displays
 ;   Version 0.6 - Add testing variables
+;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
 
 ;--MACROS--
 	include	scripts\macros.mac
 
 ;--Load ROM from rom directory--
 	org 0
-		incbin rom\nhl94_2MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
+		incbin rom\nhl94_3MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
@@ -25,22 +26,22 @@
 ; These variables are used for testing fighting. They affect how often a fight will occur, and limit who can start a fight.
 
 ; ChkCntLimit - Value used in calculation to determine if there is enough total Checks to start a fight. Max is 128 decimal.
-;               ChkCntLimit = Total checks needed * 2
+;               ChkCntLimit = Total checks needed in the game (Home Team + Away Team)
 
 ChkCntLimit     equ 40         ; Default is $28 or 40 decimal
 
-; StartFgtAtt - The minimum fight attribute needed to start a fight. Max is 15 decimal.
+; StartFgtAtt - The minimum fight attribute needed to start a fight. Max is 15 decimal. Change this to an even number.
 
 StartFgtAtt     equ 10         ; Default is $A or 10 decimal
 
-; MinFgtAtt - The minimum fight attribute needed TO fight. Min is 0, max is 15 decimal.
+; MinFgtAtt - The minimum fight attribute needed TO fight. Min is 0, max is 15 decimal. Change this to an even number.
 
 MinFgtAtt       equ 2          ; Default is 2
 
-; MinChksF - The minimum amount of ChksF for starting a fight (also depends on Fight attribute of player). Max is 255 decimal.
+; MinChksF - The minimum amount of ChksF for joining a fight (uses the player's Fgt attribute too). Max is 255 decimal.
 ;            MinChksF = ChksF needed * 2  
 
-MinChksF        equ 16         ; Default is $10 or 16 decimal
+MinChksF        equ 16         ; Default is $10 or 16 decimal. With this value, any player could join a fight with 8 ChksF.
 
 ; Loopskip - When set to something other than 0, will skip the loop that clears out the ChksF before each fight
 
@@ -85,7 +86,7 @@ attdispPatch1	equ $84DA		; Pointers to update to new Attrib Disp strings
 attdispPatch2	equ $8BD6
 attdispPatch3	equ $FC85C		
 attdispPatch4	equ $FC88E
-newCode			equ $105000		; Address in ROM where the new code will be patched in
+newCode			equ $200100		; Address in ROM where the new code will be patched in
 
 ;--NHL 94 Equates--
 checkint		equ $13BD6		
@@ -948,7 +949,9 @@ addinfo:
 
 
 ;------ Include sprite_patch.asm ------
-    include sprite_patch.asm                ; Add updated sprites and animations, move and update tables associated with sprites and animations
+    include sprite_patch.asm            ; Add updated sprites and animations, move and update tables associated with sprites and animations
+
+;    align 2                            ; Doesn't compile
 
 NewAttribList                           ; insert new attribute list from NHLPA93
     incbin 93_Tables\AttribHdr.bin

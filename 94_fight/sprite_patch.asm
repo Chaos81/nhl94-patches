@@ -1,11 +1,12 @@
 ; sprite_patch.asm - Add sprites from NHL93 to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.4
+; Current Version - 0.5
 ; Version History:
 ;   Version 0.1 - Initial version - relocate 94 tables that will be modified
 ;   Version 0.2 - Add modified Fight tables
 ;   Version 0.3 - Move patches near the beginning of file to prep for incbin to fight_patch.asm
 ;   Version 0.4 - Modify for inclusion to fight_patch.asm
+;   Version 0.5 - Modify to just add fight sprite tiles, not the entire tileset (for compatibility with sprite mod patches), adjust Newcode to work with 3MB and 4MB ROMs
 
 
 ;---------This section not needed anymore, since it is in fight_patch.asm-------------
@@ -52,14 +53,14 @@ updateanimPatch equ $AEFA       ; Move instruction to modify in updateanim
 frmdataPatch    equ $5DE7E      ; dc.l location for offset to Frame Data table
 glovecordPatch  equ $16E7C      ; dc.l location for GloveCord Frame
 
-Spritetiles     equ $5DE84      ; Location of Spritetiles (might change if Spritetiles are moved to expanded area, if so addframe2 needs to be changed)
+Spritetiles     equ $9E724      ; End of Spritetiles (might change if Spritetiles are moved to expanded area, if so addframe2 needs to be changed as well)
 
-moveLoc         equ $105A00     ; New location for tables
+moveLoc         equ $200B00     ; New location for tables
 
 ;--------------------------------------------
 
     org Spritetiles             ; Spritetiles position for overwriting
-        incbin 94_Tables\Fight\SpritetilesFight.bin
+        incbin 94_Tables\Fight\Spritetiles_Fight.bin
 
 ; Patch the ROM
 

@@ -1,4 +1,4 @@
-; 94_to_3MB.asm - Expand an NHL94 ROM to 3MB, patch SRAM access
+; 94_to_4MB.asm - Expand an NHL94 ROM to 4MB, patch SRAM access
 ; Created by chaos 
 ; Current Version - 0.1
 ; Version History:
@@ -11,9 +11,9 @@
 	org 0
 		incbin rom\temp.bin                 ; Copy temp.bin into new file
 
-;--Pad the file to 3MB--
+;--Pad the file to 4MB--
     freespace:
-        dcb.b   $300000-*, $FF              ; Pad file with FF up to 3MB size, change to 400000 to pad to 4MB
+        dcb.b   $400000-*, $FF              ; Pad file with FF up to 4MB size, change to 300000 to pad to 3MB
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM

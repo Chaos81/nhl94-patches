@@ -1,6 +1,6 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.7
+; Current Version - 0.8
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
@@ -9,6 +9,7 @@
 ;   Version 0.5 - Include sprite_patch.asm, add Fighting attribute displays
 ;   Version 0.6 - Add testing variables
 ;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
+;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -19,41 +20,6 @@
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
-
-;---------------------
-;--Testing Variables--
-;---------------------
-; These variables are used for testing fighting. They affect how often a fight will occur, and limit who can start a fight.
-
-; ChkCntLimit - Value used in calculation to determine if there is enough total Checks to start a fight. Max is 128 decimal.
-;               ChkCntLimit = Total checks needed in the game (Home Team + Away Team)
-
-ChkCntLimit     equ 40         ; Default is $28 or 40 decimal
-
-; StartFgtAtt - The minimum fight attribute needed to start a fight. Max is 15 decimal. Change this to an even number.
-
-StartFgtAtt     equ 10         ; Default is $A or 10 decimal
-
-; MinFgtAtt - The minimum fight attribute needed TO fight. Min is 0, max is 15 decimal. Change this to an even number.
-
-MinFgtAtt       equ 2          ; Default is 2
-
-; MinChksF - The minimum amount of ChksF for joining a fight (uses the player's Fgt attribute too). Max is 255 decimal.
-;            MinChksF = ChksF needed * 2  
-
-MinChksF        equ 16         ; Default is $10 or 16 decimal. With this value, any player could join a fight with 8 ChksF.
-
-; Loopskip - When set to something other than 0, will skip the loop that clears out the ChksF before each fight
-
-Loopskip        equ 0          ; Default is 0
-
-; InjRNG - The maximum value used to role the dice for injury once fight is over. Higher value = less chance of injury. Max is 255.
-
-InjRNG          equ 60         ; Default is $3C, or 60 decimal
-
-
-
-
 
 ;-----------
 ;--Equates--
@@ -182,6 +148,10 @@ puckx			equ $FFFFB74A			; RAM puck x location (start of puck struct)
 puckc			equ $FFFFB7AA			; RAM puck carrier SCNum
 
 OptPen			equ $FFFFD056			; Penalty option: 0 = Off, 1 = On, 2 = On, no offsides
+OptPerLen		equ $FFFFD058			; Period Length: 0 = 5 min, 1 = 10 min, 2 = 20 min, 
+										; 3 = 30 sec
+PerTimeTotal	equ $FFFFC46C			; Current Period Length
+gsp				equ $FFFFC466			; Current Period #
 
 VDP_CNTR		equ $00C00008			; Frame counter
 
@@ -224,6 +194,42 @@ back:
 ;------------
 
 	org	newCode				; $105000
+
+;-----------------
+;--Modifications--
+;-----------------
+
+; Clears ChksF for all players when there is a fight
+Loopskip        equ 1          ; 93 Default is 0
+
+; These tables are used for testing fighting. They affect how often a fight will occur, 
+; and limit who can start a fight.
+
+; Minimum Total Checks Needed for a Fight (Home + Away Team)
+.chkcnttab	dc.w 30,40,40,10			; indexed by OptPerLen 
+										; (Default 5 min,10 min,20 min,30 sec)
+										; 93 default is 40 dec
+
+; The minimum amount of ChksF for joining a fight (uses the player's Fgt attribute too). 
+; Minimum ChksF to join a fight (Value/2)
+.chkftab	dc.w 8,16,16,3				; indexed by OptPerLen
+										; 93 default is 16 dec
+
+; Minimum Fgt attribute to start a fight
+.fgtatttab	dc.w 10,6					; in the future, indexed by Fight option
+										; 93 default is 10 dec
+
+; Minimum Fgt attribute to join a fight
+.minfgttab	dc.w 2,0					; in the future, indexed by Fight option
+										; 93 default is 2 dec
+
+; Value to RNG for injury, higher the less chance
+.injtab		dc.w 60,30					; in the future, indexed by Fight option
+										; 93 default is 60 dec
+
+;-----------------
+;--Start of code--
+;-----------------
 
 chkfightinput:				; Check if fighting flag is set, if so, continue to fightinput
 	btst #0, pflags2(a3)	; Check fighting flag
@@ -333,7 +339,10 @@ checkfight:
 	move.w  $36(a0),d0      ; move assnum into d0
 	cmpi.b  #pfaceoff,$38(a0,d0.w) ; compare pfaceoff to puck's assignment
 	beq.w   .ex             ; exit if puck on faceoff
+
 ;	moveq   #$28,d0 	   	; 40 dec into d0 (code from 93)
+	movea.l .chkcnttab, a0	; move ChkCnt Table into a0
+	
     moveq   #ChkCntLimit,d0 ; move limit into d0
 	sub.w   ChkCnt,d0   	; Sub CheckCnt from d0
 	bpl.w   .cont           ; branch if d0 positive

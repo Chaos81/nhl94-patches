@@ -9,7 +9,7 @@
 ;   Version 0.5 - Include sprite_patch.asm, add Fighting attribute displays
 ;   Version 0.6 - Add testing variables
 ;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
-;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length
+;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -47,7 +47,7 @@
 doinputPatch 	equ $B258		; Address in doinput to patch code
 checkcxPatch   	equ $13B16    	; Address in checkcx to patch code
 asstabPatch		equ $18DCC		; Address for assfight on asstab to patch code
-fgtdispPatch	equ $8E3E		; Address to change math for Fighting attribute display
+fgtdispPatch	equ $8E3A		; Address to change math for Fighting attribute display
 attdispPatch1	equ $84DA		; Pointers to update to new Attrib Disp strings
 attdispPatch2	equ $8BD6
 attdispPatch3	equ $FC85C		
@@ -79,6 +79,7 @@ print           equ $11BA4
 getname	        equ $18A90
 appstring		equ $11D9E
 appendz			equ $11D96
+DispAttribjmp   equ $8E4C
 
 
 
@@ -98,8 +99,8 @@ PenInst			equ $2A			; PenInst offset on PenaltyList
 ;SPAfhith		equ $11E6		; Set to SPAtoddle, 93 original $1068
 ;SPAfhitl		equ $11E6		; Set to SPAtoddle, 93 original $108A
 ;SPAfheld		equ $6C6		; Set to SPAstop, 93 original $FE2
-;SPAffall		equ $1776		; Set to SPAfallr?, 93 original $10CE
-;SPAbfall		equ $17E8		; Set to SPAfalll?, 93 original $10AC
+;SPAffall		equ $1776		; Set to SPAffall, 93 original $10CE
+;SPAbfall		equ $17E8		; Set to SPAbfall, 93 original $10AC
 
 ; SPAList_Fight.bin SPA values:
 
@@ -193,7 +194,7 @@ back:
 ;--New code--
 ;------------
 
-	org	newCode				; $105000
+	org	newCode				; $200100
 
 ;-----------------
 ;--Modifications--
@@ -206,25 +207,24 @@ Loopskip        equ 1          ; 93 Default is 0
 ; and limit who can start a fight.
 
 ; Minimum Total Checks Needed for a Fight (Home + Away Team)
-.chkcnttab	dc.w 30,40,40,10			; indexed by OptPerLen 
-										; (Default 5 min,10 min,20 min,30 sec)
+chkcnttab	dc.w 10,30,40,40			; < 2 min, 2-7 min, 7-20 min, >= 20 min (10,30,40,40)
 										; 93 default is 40 dec
 
 ; The minimum amount of ChksF for joining a fight (uses the player's Fgt attribute too). 
 ; Minimum ChksF to join a fight (Value/2)
-.chkftab	dc.w 8,16,16,3				; indexed by OptPerLen
+chkftab 	dc.w 4,8,16,16				; < 2 min, 2-7 min, 7-20 min, >= 20 min (4,8,16,16)
 										; 93 default is 16 dec
 
 ; Minimum Fgt attribute to start a fight
-.fgtatttab	dc.w 10,6					; in the future, indexed by Fight option
+fgtatttab	dc.w 10,6					; in the future, indexed by Fight option (10,6)
 										; 93 default is 10 dec
 
 ; Minimum Fgt attribute to join a fight
-.minfgttab	dc.w 2,0					; in the future, indexed by Fight option
+minfgttab	dc.b 2,0					; in the future, indexed by Fight option (2,0)
 										; 93 default is 2 dec
 
 ; Value to RNG for injury, higher the less chance
-.injtab		dc.w 60,30					; in the future, indexed by Fight option
+injtab  	dc.w 60,30					; in the future, indexed by Fight option (60,30)
 										; 93 default is 60 dec
 
 ;-----------------
@@ -332,25 +332,58 @@ checkfight:
 	bne.w   rtss            ; exit if so
 	btst    #4,(gmode).w    ; check if highlight
 	bne.w   rtss            ; exit if so
-	btst    #0,puckx+pflags2 ; checks fight bit of puck's pflags
+	btst    #0,(puckx+pflags2).w ; checks fight bit of puck's pflags
 	bne.w   rtss            ; exit if set
+
+; new code to prevent fights in OT
+    cmpi.w  #2,(gsp).w      ; compare to 3rd period
+    bgt.w   rtss            ; exit if greater than
+
 	movem.l d0-d4/a0-a3,-(sp)
 	movea.l #puckx,a0 		; puck player struct
 	move.w  $36(a0),d0      ; move assnum into d0
 	cmpi.b  #pfaceoff,$38(a0,d0.w) ; compare pfaceoff to puck's assignment
 	beq.w   .ex             ; exit if puck on faceoff
 
+; new code to adjust ChkCntLimit based on period length
+    movem.l a0,-(sp)                ; push to stack
+	movea.l #chkcnttab,a0	        ; move ChkCnt Table into a0
+    clr.w   d0
+; INSERT ARCADE SETTING CHECK HERE (set d0 to 0)
+    moveq   #6,d0                   ; set to last entry in table
+ 	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
+    bge.w   .chkcnt                 ; branch if >=
+    subq    #2,d0                   ; sub 2 from index
+    cmpi.w  #$1A4,(PerTimeTotal).w  ; compare to 7 minutes
+    bgt.w   .chkcnt                 ; branch if >
+    subq    #2,d0                   ; sub 2 from index
+    cmpi.w  #$78,(PerTimeTotal).w   ; compare to 2 minutes
+    bgt.w   .chkcnt                 ; branch if >
+    moveq   #0,d0                   ; set to first entry in table
+
+.chkcnt:
 ;	moveq   #$28,d0 	   	; 40 dec into d0 (code from 93)
-	movea.l .chkcnttab, a0	; move ChkCnt Table into a0
-	
-    moveq   #ChkCntLimit,d0 ; move limit into d0
-	sub.w   ChkCnt,d0   	; Sub CheckCnt from d0
+;   moveq   #ChkCntLimit,d0 ; move limit into d0
+
+    move.w  (a0,d0.w),d0    ; move entry from chkcnt table into d0
+    movea.l (sp)+,a0        ; pop off stack original a0 value
+	sub.w   (ChkCnt).w,d0   ; Sub CheckCnt from d0
 	bpl.w   .cont           ; branch if d0 positive
 	clr.w   d0
 .cont:                                
-	lsr.w   #2,d0           ; divide by 2
+	lsr.w   #2,d0           ; divide by 4
 ;	addi.w  #$A,d0          ; add 10 dec to d0 (code from 93)
-    addi.w  #StartFgtAtt,d0
+;   addi.w  #StartFgtAtt,d0
+
+; new code to adjust starting Fight attribute based on fighting mode
+    movem.l a0,-(sp)        ; push to stack
+    movea.l #fgtatttab,a0	; move Fight Att table into a0
+; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
+    add.w   0(a0),d0        ; add attrib from table to d0       
+
+.cfv:
+    movea.l (sp)+,a0        ; pop off stack original a0 value
+
 	bsr.w   ChkFightValue
 	exg     a2,a3
 	bsr.w   ChkFightValue
@@ -362,7 +395,7 @@ checkfight:
     tst.w   d0              ; skip .loop if not equal
     bne.w   .cwd            
 	moveq   #$19,d0         ; # of players on team
-	move 	#HmChksFor,a0	; Home Team player ChksFor
+	movea.l #HmChksFor,a0	; Home Team player ChksFor
 .loop:                                  
 	clr.b   $364(a0)        ; clears ChksF of Away Team player
 	clr.b   (a0)+           ; clears ChksF of Home Team player
@@ -391,8 +424,8 @@ checkfight:
 	bsr.w   SF              ; start fight subroutine
 	exg     a2,a3
 	bsr.w   SF
-	move 	#SortCords,a3 	; Start of Player Structs
-	move.l  #afwatch,d0         ; assfwatch - assignment for other players to watch the fight
+	movea.l #SortCords,a3 	; Start of Player Structs
+	move.l  #afwatch,d0     ; assfwatch - assignment for other players to watch the fight
 	moveq   #$B,d1          ; # of player structs to iterate through
 .0:                                
 	btst    #0,$63(a3)      ; check if player fighting
@@ -452,11 +485,25 @@ ChkFightValue:
 	cmp.b   $74(a3),d0      ; checks fight value with d0
 	bhi.w   rtss            ; exit if d0 is higher
 ;	cmpi.b  #2,$74(a2)      ; compare if fight value is 2 (code from 93)
-    cmpi.b  #MinFgtAtt,$74(a2) ; compare if fight value is less than MinFgtAtt
-	blt.w   rtss            ; exit if less
+;   cmpi.b  #MinFgtAtt,$74(a2) ; compare if fight value is less than MinFgtAtt
+
+; new code for minimum Fgt attribute based on fighting mode
+    movem.l a0,-(sp)        ; push to stack
+    clr.w   d1
+    movea.l #minfgttab,a0	; move Fight Att table into a0
+; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
+       
+        
+
+.minchk:
+    move.b  (a0,d1),d1      ; move result from table to d1
+    movea.l (sp)+,a0        ; pop off stack original a0 value
+
+    cmp.b   $74(a2),d1      ; compare Fight attrib of player to table result
+	bgt.w   rtss            ; exit if d1 is higher
 	clr.w   d1
 	move.b  $66(a2),d1      ; a2's player roster offset into d1
-	move 	#tmstruct,a0 	; Home Team bytes			
+	movea.l #tmstruct,a0 	; Home Team bytes			
 	btst    #6,$62(a2)      ; check which team a2 is on
 	beq.w   .cont       	; branch if home
 	adda.w  #$364,a0        ; add for away team struct
@@ -466,8 +513,32 @@ ChkFightValue:
 	asl.b   #1,d1			; mult by 2
 	neg.b   d1				; negate d1
 ;	addi.b  #$10,d1			; add $10 to d1 (code from 93)
-    addi.b  #MinChksF,d1    ; add MinChksF to d1
-	cmp.b   $74(a2),d1      ; compare a2's fight value to d1
+;   addi.b  #MinChksF,d1    ; add MinChksF to d1
+	
+; new code for minimum ChksF based on period time    
+
+    movem.l a0,-(sp)                ; push to stack
+	movea.l #chkftab,a0	        ; move ChkF Table into a0
+    clr.w   d0
+
+; INSERT ARCADE SETTING CHECK HERE (set d0 to 0)
+    moveq   #6,d0                   ; set to last entry in table
+ 	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
+    bge.w   .chkfcheck              ; branch if >=
+    subq    #2,d0                   ; sub 2 from index
+    cmpi.w  #$1A4,(PerTimeTotal).w  ; compare to 7 minutes
+    bgt.w   .chkfcheck              ; branch if >=
+    subq    #2,d0                   ; sub 2 from index
+    cmpi.w  #$78,(PerTimeTotal).w   ; compare to 2 minutes
+    bgt.w   .chkfcheck              ; branch if >=
+    moveq   #0,d0                   ; set to first entry in table
+
+.chkfcheck:
+    move.w  (a0,d0.w),d0    ; move entry from chkf table into d0
+    movea.l (sp)+,a0        ; pop off stack original a0 value
+    add.b   d0,d1           ; add d0 to d1
+
+    cmp.b   $74(a2),d1      ; compare a2's fight value to d1
 	bgt.w   rtss            ; exit if d1 is greater than
 	bset    #0,$63(a2)      ; set fight bit a2
 	bset    #0,$63(a3)      ; set fight bit a3
@@ -479,7 +550,7 @@ ChkFightValue:
 	bne.w   rtss            ; exit if first 2 bits of frame counter aren't 0 (No Instigator penalty)
 	movea.l a3,a4
 	moveq   #5,d0           ; set loop iterator
-	move 	#SortCords,a3 	; Home Player structs
+	movea.l #SortCords,a3 	; Home Player structs
 	btst    #6,$62(a4)      ; check which team a4 (a3 is on)
 	beq.w   .playerloop     ; branch if home
 	adda.w  #$300,a3        ; add offset to Away player structs
@@ -543,7 +614,7 @@ assfight:
 	bmi.w   rtss            ; branch if negative
 	move.w  $2E(a3),d0      ; move impactp into d0 (past impact player)
 	asl.w   #7,d0           ; mult by 128 (size of player struct)
-	move 	#SortCords,a0 	; player struct start
+	movea.l #SortCords,a0 	; player struct start
 	adda.w  d0,a0           ; add d0 to a0 address (offset to impactp player struct)
 	move.w  (a3),d0         ; Xpos into d0
 	add.w   (a0),d0         ; add a0 Xpos to d0
@@ -722,7 +793,18 @@ chkhit:
 	addi.w  #$258,(crowdlevel).w ; add to crowd
 	addi.w  #$1E,(CwdExciteLvl).w ; add to crowd excite
 ;	moveq   #$3C,d0    		; move 60 dec into d0 (code from 93)
-    moveq   #InjRNG,d0      ; Value for Injury RNG
+;   moveq   #InjRNG,d0      ; Value for Injury RNG
+
+; new code for injury RNG based on Fighting mode
+    movem.l a0,-(sp)        ; push to stack
+    clr.w   d0
+    movea.l #injtab,a0	; move injtab table into a0
+; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
+
+.rng:
+    move.w  (a0,d0.w),d0    ; move result from table to d1
+    movea.l (sp)+,a0        ; pop off stack original a0 value
+
 	jsr   	randomd0        ; RNG
 	cmp.b   $75(a0),d0      ; compare Chk value to d0
 	bgt.w   .fall        	; branch if greater than
@@ -954,7 +1036,14 @@ addinfo:
     rts
 ; End of function addname
 
+fgtdisp:
+; Adjust display for Fgt attribute
 
+    andi.w  #$E,d0          ; ignore bit 0 (remove Hand)
+    moveq   #$E,d1          ; change divisor to 14 dec, which is max Fighting attribute
+    mulu.w  #$64,d0         ; mult by 100 dec
+    divu.w  d1,d0           ; divide by d1 (14 dec)
+    jmp     DispAttribjmp   ; jump to DispAttribValue
 
 
 ;------ Include sprite_patch.asm ------
@@ -982,6 +1071,6 @@ NewAttribList                           ; insert new attribute list from NHLPA93
 ; Change the math for Fighting attribute display
 
     org fgtdispPatch
-        moveq #$E, d1           ; change divisor to 14 dec, which is max Fighting attribute
+        jmp fgtdisp
 
 

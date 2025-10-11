@@ -20,16 +20,17 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 0.7 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.8 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
-    - Modified patch to move code into the upper 2MB ROM range (using a 3MB or 4MB ROM for patching now). This allows compatibility with ROM hacks.
-    - Instead of overwriting the whole Sprite tileset, modify to only add the fighting sprite tiles to the existing tileset, to keep from overwriting sprite hacks.
+    - Adjust minimum total checks and minimum checks for based on length of period - < 2 min, 2-7 min, 7-20 min, >= 20 min
+    - Adjust Fight attribute display to be similar to NHLPA93 (0-100 scale, no curve applied like other 94 attributes)   
 
 Previous version updates:
-    - Add testing variables for fight conditions. These can be edited in the fight_patch.asm file. The values are set to default right now (NHLPA93 values).
+    - Modified patch to move code into the upper 2MB ROM range (using a 3MB or 4MB ROM for patching now). This allows compatibility with ROM hacks.
+    - Instead of overwriting the whole Sprite tileset, modify to only add the fighting sprite tiles to the existing tileset, to keep from overwriting sprite hacks.
 
 ### How to use this patch:
 

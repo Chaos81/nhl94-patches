@@ -10,7 +10,7 @@
 ;   Version 0.6 - Add testing variables
 ;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
 ;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
-
+;   Version 0.81 - Fix bug with branching after returning from checkfight
 ;--MACROS--
 	include	scripts\macros.mac
 
@@ -178,8 +178,9 @@ back:
 ; Patch checkcx subroutine
 	org checkcxPatch			; Set to patch location need to replace 12 bytes 
 	jsr 	cxchecks			; JSR to the new code (6 bytes long)
-	bra.w		*+4				; Branch to the next 94 code (at $13B22) (4 bytes long)
-	dc.w	$0					; pad 2 bytes with 00
+	bra.s	*+6				    ; Branch to the next 94 code (at $13B22) (4 bytes long)
+	nop                         ; take up 4 bytes of space
+    nop					
 
 ; Patch assfight and assfwatch on asstab
 	org asstabPatch
@@ -339,7 +340,7 @@ checkfight:
     cmpi.w  #2,(gsp).w      ; compare to 3rd period
     bgt.w   rtss            ; exit if greater than
 
-	movem.l d0-d4/a0-a3,-(sp)
+	movem.l d0-d4/a0-a3,-(sp) ; push to stack
 	movea.l #puckx,a0 		; puck player struct
 	move.w  $36(a0),d0      ; move assnum into d0
 	cmpi.b  #pfaceoff,$38(a0,d0.w) ; compare pfaceoff to puck's assignment

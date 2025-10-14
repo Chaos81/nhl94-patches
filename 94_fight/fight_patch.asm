@@ -1,6 +1,6 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.8
+; Current Version - 0.9
 ; Version History:
 ;   Version 0.1 - Initial version
 ;   Version 0.2 - Added modifications due to Fight sprites addition
@@ -11,6 +11,7 @@
 ;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
 ;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
 ;   Version 0.81 - Fix bug with branching after returning from checkfight
+;   Version 0.9 - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
 ;--MACROS--
 	include	scripts\macros.mac
 
@@ -52,6 +53,7 @@ attdispPatch1	equ $84DA		; Pointers to update to new Attrib Disp strings
 attdispPatch2	equ $8BD6
 attdispPatch3	equ $FC85C		
 attdispPatch4	equ $FC88E
+beginPatch      equ $76C6       ; Address to update the RAM addresses to clear
 newCode			equ $200100		; Address in ROM where the new code will be patched in
 
 ;--NHL 94 Equates--
@@ -160,6 +162,8 @@ printx			equ $FFFFB028			; Used for printing text in boxes
 printy			equ $FFFFB02A
 printa			equ $FFFFB02C			; Attribute for printing
 
+OptFight        equ $FFFFDF00           ; 0 = Off, 1 = On, 2 = On, Arcade
+
 ;------------
 ;--Patches--
 ;------------
@@ -187,9 +191,28 @@ back:
 	dc.l assfight
 	dc.l assfwatch
 
-; Patch for Fighting attribute display math
-	org fgtdispPatch
-	moveq #$E,d1				; set d1 (divisor) to $E (max Fighting value)
+; Patch to update the Begin subroutine RAM clearing loop
+    org beginPatch
+    cmpa.w #$DF02,a0            ; end loop after fight RAM option
+
+; Change the math for Fighting attribute display
+
+    org fgtdispPatch
+        jmp fgtdisp
+
+; Update Attribute Menu Lists
+
+ org attdispPatch1
+        movea.l #NewAttribList, a1
+
+    org attdispPatch2
+        movea.l #NewAttribList, a1
+
+    org attdispPatch3
+        movea.l #NewAttribList+16, a1
+
+    org attdispPatch4
+        movea.l #NewAttribList+16, a1
 
 ;------------
 ;--New code--
@@ -217,15 +240,15 @@ chkftab 	dc.w 4,8,16,16				; < 2 min, 2-7 min, 7-20 min, >= 20 min (4,8,16,16)
 										; 93 default is 16 dec
 
 ; Minimum Fgt attribute to start a fight
-fgtatttab	dc.w 10,6					; in the future, indexed by Fight option (10,6)
+fgtatttab	dc.w 10,6					; Indexed by Fight option (10,6)
 										; 93 default is 10 dec
 
 ; Minimum Fgt attribute to join a fight
-minfgttab	dc.b 2,0					; in the future, indexed by Fight option (2,0)
+minfgttab	dc.b 2,0					; Indexed by Fight option (2,0)
 										; 93 default is 2 dec
 
 ; Value to RNG for injury, higher the less chance
-injtab  	dc.w 60,30					; in the future, indexed by Fight option (60,30)
+injtab  	dc.w 60,50					; Indexed by Fight option (60,50)
 										; 93 default is 60 dec
 
 ;-----------------
@@ -313,6 +336,8 @@ fightinput:
 checkfight:                 
 ; look for start of fight between players a2 and a3
 
+    tst.w   (OptFight).w    ; Check if fighting option is on
+    beq.w   rtss            ; exit if not
 	cmpi.w  #$A,$32(a3)     ; compare impact to 10 dec
 	blt.w   rtss            ; exit if less
 	cmpi.w  #$A,$32(a2)     ; compare a2 impact to 10 dec
@@ -350,7 +375,9 @@ checkfight:
     movem.l a0,-(sp)                ; push to stack
 	movea.l #chkcnttab,a0	        ; move ChkCnt Table into a0
     clr.w   d0
-; INSERT ARCADE SETTING CHECK HERE (set d0 to 0)
+
+    cmpi.w  #2,(OptFight).w         ; check if arcade mode
+    beq.w   .chkcnt                 ; branch if equal
     moveq   #6,d0                   ; set to last entry in table
  	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
     bge.w   .chkcnt                 ; branch if >=
@@ -377,13 +404,17 @@ checkfight:
 ;   addi.w  #StartFgtAtt,d0
 
 ; new code to adjust starting Fight attribute based on fighting mode
-    movem.l a0,-(sp)        ; push to stack
+    movem.l d1/a0,-(sp)        ; push to stack
     movea.l #fgtatttab,a0	; move Fight Att table into a0
-; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
-    add.w   0(a0),d0        ; add attrib from table to d0       
+    clr.w   d1
+    cmpi.w  #2,(OptFight).w         ; check if arcade mode
+    bne.w   .cfv                    ; branch if not
+    moveq   #2,d1                   ; move 2 to d1 if set
+           
 
 .cfv:
-    movea.l (sp)+,a0        ; pop off stack original a0 value
+    add.w   (a0,d1.w),d0    ; add attrib from table to d0
+    movem.l (sp)+,d1/a0     ; pop off stack original a0 value
 
 	bsr.w   ChkFightValue
 	exg     a2,a3
@@ -492,9 +523,10 @@ ChkFightValue:
     movem.l a0,-(sp)        ; push to stack
     clr.w   d1
     movea.l #minfgttab,a0	; move Fight Att table into a0
-; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
-       
-        
+
+    cmpi.w  #2,(OptFight).w ; check if arcade mode 
+    bne.w   .minchk         ; branch if not
+    moveq   #1,d1           ; move 1 into d1
 
 .minchk:
     move.b  (a0,d1),d1      ; move result from table to d1
@@ -519,10 +551,11 @@ ChkFightValue:
 ; new code for minimum ChksF based on period time    
 
     movem.l a0,-(sp)                ; push to stack
-	movea.l #chkftab,a0	        ; move ChkF Table into a0
+	movea.l #chkftab,a0	            ; move ChkF Table into a0
     clr.w   d0
 
-; INSERT ARCADE SETTING CHECK HERE (set d0 to 0)
+    cmpi.w  #2,(OptFight).w         ; check if arcade mode
+    beq.w   .chkfcheck              ; branch if so
     moveq   #6,d0                   ; set to last entry in table
  	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
     bge.w   .chkfcheck              ; branch if >=
@@ -799,9 +832,11 @@ chkhit:
 ; new code for injury RNG based on Fighting mode
     movem.l a0,-(sp)        ; push to stack
     clr.w   d0
-    movea.l #injtab,a0	; move injtab table into a0
-; INSERT ARCADE SETTING CHECK HERE (a0 offset should be 2)
+    movea.l #injtab,a0	    ; move injtab table into a0
 
+    cmpi.w  #2,(OptFight).w ; check if arcade mode
+    bne.w   .rng            ; branch if not
+    moveq   #2,d0           ; set d0 to 2
 .rng:
     move.w  (a0,d0.w),d0    ; move result from table to d1
     movea.l (sp)+,a0        ; pop off stack original a0 value
@@ -812,13 +847,13 @@ chkhit:
 ;	bra.w 	.fall			; Added in for testing to skip fight injury part	
 ; This part has to do with injury from fight
 
-	move.w  #$B4,(PenCntDwn).w ; move 180 dec into PenCntDwn - the rest of this might have to do with injured player
-	bset    #6,$63(a3)      ; causes toddle animation in playeracc
-	move.w  #SPAffall,d1    ; #SPAffall
-	jsr   	SetSPA          ; set animation
-	bsr.w   clear       	; clears banner?
-	movea.w a3,a2           ; move a3 address into a2
-	jsr   	setInjuryType	; Set injury for player
+	move.w  #$B4,(PenCntDwn).w  ; move 180 dec into PenCntDwn - the rest of this might have to do with injured player
+	bset    #6,$63(a3)          ; causes toddle animation in playeracc
+	move.w  #SPAffall,d1        ; #SPAffall
+	jsr   	SetSPA              ; set animation
+	bsr.w   clear       	    ; clears banner?
+	movea.w a3,a2               ; move a3 address into a2
+	jsr   	setInjuryType	    ; Set injury for player
 	move.w  #$112C,$66(a0,d1.w)	; ??? - changes player status to $112C (Injured Game - Fighting)
 	move.w  #3,(InjCntDown).w	; set InjCntDown
 	bra.w   .ex
@@ -967,24 +1002,24 @@ banner:
     dc.b    $1
     dc.b    $0
 
-    move.w  d2,d0		; move d2 into d0
-    lsr.w   #1,d2		; divide d2 by 2
+    move.w  d2,d0		    ; move d2 into d0
+    lsr.w   #1,d2		    ; divide d2 by 2
     sub.w   d2,(printx).w	; sub d2 from printx
-    moveq   #5,d1		; move 5 into d1
-    jsr   Framer		; Frame and fill - d0/d1 x/y size of rectangle
+    moveq   #5,d1		    ; move 5 into d1
+    jsr   Framer		    ; Frame and fill - d0/d1 x/y size of rectangle
     move.w  #2,(printy).w	; move 2 into printy	
-    tst.b   d3			; test d3
-    bmi.w   .getnames	; branch if d3 negative
+    tst.b   d3			    ; test d3
+    bmi.w   .getnames	    ; branch if d3 negative
     move.w  #4,(printy).w	; move 4 into printy
 .getnames:                              
-    move.b  -3(a0),d0	; move data at a0-3 into d0
-    bsr.w   addinfo		; Add JNo, Name, Team Abv to string
+    move.b  -3(a0),d0	    ; move data at a0-3 into d0
+    bsr.w   addinfo		    ; Add JNo, Name, Team Abv to string
     jsr   print			
     eori.w  #6,(printy).w	; EOR 6 with printy
     move.b  -5(a0),d0		; move data at a0-5 into d0
     bsr.w   addinfo
     jsr   print
-    jsr   printz		; add vs to string
+    jsr   printz		    ; add vs to string
     
     dc.b 0
     dc.b   8
@@ -1055,23 +1090,9 @@ fgtdisp:
 NewAttribList                           ; insert new attribute list from NHLPA93
     incbin 93_Tables\AttribHdr.bin
 
-; Now, modify the pointers
+;------ Include McMarkis' menu_patch.asm ------
 
-    org attdispPatch1
-        movea.l #NewAttribList, a1
-
-    org attdispPatch2
-        movea.l #NewAttribList, a1
-
-    org attdispPatch3
-        movea.l #NewAttribList+16, a1
-
-    org attdispPatch4
-        movea.l #NewAttribList+16, a1
-
-; Change the math for Fighting attribute display
-
-    org fgtdispPatch
-        jmp fgtdisp
+NewCodeAddress
+    include menu_patch\patch.asm
 
 

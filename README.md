@@ -20,14 +20,17 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 0.81 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.9 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
-    - Fixed a bug that caused a problem with momentum transfer after a check
+    - Added menu option for fighting (Off, On, On - Arcade Mode) thanks to McMarkis - [NHL94 Gens Patches](https://github.com/Mhopkinsinc/NHL94-Gens-Patches/tree/main)
+    - Added Arcade Mode - more fights (lower # of total checks (10), lower Fgt attribute needed (6 vs. 10), no minimum checks needed, slightly higher chance of game injury
 
 Previous version updates:
+    - Fixed a bug that caused a problem with momentum transfer after a check
+
     - Adjust minimum total checks and minimum checks for based on length of period - < 2 min, 2-7 min, 7-20 min, >= 20 min
     - Adjust Fight attribute display to be similar to NHLPA93 (0-100 scale, no curve applied like other 94 attributes)
 

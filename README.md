@@ -26,7 +26,7 @@ A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
     - Added menu option for fighting (Off, On, On - Arcade Mode) thanks to McMarkis - [NHL94 Gens Patches](https://github.com/Mhopkinsinc/NHL94-Gens-Patches/tree/main)
-    - Added Arcade Mode - more fights (lower # of total checks (10), lower Fgt attribute needed (6 vs. 10), no minimum checks needed, slightly higher chance of game injury
+    - Added Arcade Mode - more fights (lower # of total checks (10), lower Fgt attribute needed (6 vs. 10), less minimum checks needed, slightly higher chance of game injury
 
 Previous version updates:
     - Fixed a bug that caused a problem with momentum transfer after a check
@@ -42,8 +42,9 @@ Previous version updates:
 - Download the code from GitHub (use the Code button at the top of the repository).
 - Navigate to where you downloaded the code. Open the 94_fight folder.
 - Open up the fight_patch.asm file in a file editor of your choice, and make adjustments to the testing variables (they are documented in there). Save your changes.
+- If you do not want to make changes, the ROM is already built and is in the output folder.
 - Run the build.bat file in the main 94_fight folder.
-- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.6.bin). 
+- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.9.bin). 
     If there is no new ROM file, the Build.txt file will list errors that occurred. Fix them and try again. Make sure to check the date on the ROM file, as if there was one from a previous build, it will still be there.
 - Load the ROM up and play!
 

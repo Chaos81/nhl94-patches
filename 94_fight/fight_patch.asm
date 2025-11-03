@@ -12,6 +12,7 @@
 ;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
 ;   Version 0.81 - Fix bug with branching after returning from checkfight
 ;   Version 0.9 - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
+;   Version 0.91 - Attempt to fix hesitation when KOing a player
 ;--MACROS--
 	include	scripts\macros.mac
 
@@ -369,7 +370,7 @@ checkfight:
 	movea.l #puckx,a0 		; puck player struct
 	move.w  $36(a0),d0      ; move assnum into d0
 	cmpi.b  #pfaceoff,$38(a0,d0.w) ; compare pfaceoff to puck's assignment
-	beq.w   .ex             ; exit if puck on faceoff
+	beq.w   .exit             ; exit if puck on faceoff
 
 ; new code to adjust ChkCntLimit based on period length
     movem.l a0,-(sp)                ; push to stack
@@ -421,7 +422,7 @@ checkfight:
 	bsr.w   ChkFightValue
 	exg     a2,a3
 	btst    #0,$63(a3)      ; check if fight bit set
-	beq.w   .ex             ; branch if not
+	beq.w   .exit           ; branch if not
 	clr.w   (ChkCnt).w      ; Clear ChkCnt
     move.w  #Loopskip,d0
     tst.w   d0              ; skip .loop if not equal
@@ -476,7 +477,7 @@ checkfight:
 	jsr   	assinsert		; insert new assignment
 	st      (collflag).w	; set collflag
 	movea.l (sp)+,a3        ; pop off stack original a3 value
-.ex:                                
+.exit:                                
 							
 	movem.l (sp)+,d0-d4/a0-a3
 	rts
@@ -814,13 +815,13 @@ chkhit:
 	movea.l #PenBuf,a1 		; PenBuf
 .cont:                                
 	addq.w  #2,a1           ; add 2 to a1
-	cmpi.b  #$26,(a1)  		; compare 26 to a1
+	cmpi.b  #$26,(a1)  		; compare 26 to a1 (PenFighting)
 	bne.s   .cont
 	move.b  1(a1),d0        ; move 1(a1) into d0
 	andi.w  #$F,d0          ; pass first 4 bits of d0
 	cmp.w   $52(a0),d0      ; compare SCnum to d0
 	bne.s   .cont           ; branch if not equal
-	move.b  #$28,(a1)  		; move 40 dec into a1 position
+	move.b  #$28,(a1)  		; move 40 dec into a1 position (PenFighting*)
 	movem.l (sp)+,a1        ; pop from stack
 	move.w  #$3C,(PenCntDwn).w ; move 60 dec into PenCntDown
 	move.w  #$FFFF,$44(a0)  ; move -1 into temp3

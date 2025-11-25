@@ -18,7 +18,7 @@
 
 ;--Load ROM from rom directory--
 	org 0
-		incbin rom\nhl94_3MB.bin    ; Currently using the expanded ROM, until I create a macro to do it automatically
+		incbin rom\nhl94_3MB.bin            ; Currently using the expanded ROM, until I create a macro to do it automatically
 
 ;--Remove Checksum Code--
 	include	scripts\patch_checksum.asm      ; Patches Checksum jmp in ROM
@@ -811,22 +811,23 @@ chkhit:
 	bra.w   .ex
 
 .FightFall:                              
-	movem.l a1,-(sp)        ; push to stack
-	movea.l #PenBuf,a1 		; PenBuf
+;	movem.l a1,-(sp)        ; push to stack
+;	movea.l #PenBuf,a1 		; PenBuf
 .cont:                                
-	addq.w  #2,a1           ; add 2 to a1
-	cmpi.b  #$26,(a1)  		; compare 26 to a1 (PenFighting)
-	bne.s   .cont
-	move.b  1(a1),d0        ; move 1(a1) into d0
-	andi.w  #$F,d0          ; pass first 4 bits of d0
-	cmp.w   $52(a0),d0      ; compare SCnum to d0
-	bne.s   .cont           ; branch if not equal
-	move.b  #$28,(a1)  		; move 40 dec into a1 position (PenFighting*)
-	movem.l (sp)+,a1        ; pop from stack
+;	addq.w  #2,a1           ; add 2 to a1
+;	cmpi.b  #$26,(a1)  		; compare 26 to a1 (PenFighting)
+;	bne.s   .cont
+;	move.b  1(a1),d0        ; move 1(a1) into d0
+;	andi.w  #$F,d0          ; pass first 4 bits of d0
+;	cmp.w   $52(a0),d0      ; compare SCnum to d0
+;	bne.s   .cont           ; branch if not equal
+;	move.b  #$28,(a1)  		; move 40 dec into a1 position (PenFighting*)
+;	movem.l (sp)+,a1        ; pop from stack
 	move.w  #$3C,(PenCntDwn).w ; move 60 dec into PenCntDown
 	move.w  #$FFFF,$44(a0)  ; move -1 into temp3
 	addi.w  #$258,(crowdlevel).w ; add to crowd
 	addi.w  #$1E,(CwdExciteLvl).w ; add to crowd excite
+    bra.w   .fall           ; added for troubleshooting
 ;	moveq   #$3C,d0    		; move 60 dec into d0 (code from 93)
 ;   moveq   #InjRNG,d0      ; Value for Injury RNG
 

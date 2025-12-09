@@ -20,15 +20,18 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 0.9 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.95 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
+    - Fixed bug causing hesitation at times when player is knocked down. This bug fix also fixes the problem where the fight winner isn't always declared after a knock down.
+    - Adjust Arcade Mode settings to cause less frequent fights.
+
+Previous version updates:
     - Added menu option for fighting (Off, On, On - Arcade Mode) thanks to McMarkis - [NHL94 Gens Patches](https://github.com/Mhopkinsinc/NHL94-Gens-Patches/tree/main)
     - Added Arcade Mode - more fights (lower # of total checks (10), lower Fgt attribute needed (6 vs. 10), less minimum checks needed, slightly higher chance of game injury
 
-Previous version updates:
     - Fixed a bug that caused a problem with momentum transfer after a check
 
     - Adjust minimum total checks and minimum checks for based on length of period - < 2 min, 2-7 min, 7-20 min, >= 20 min
@@ -39,12 +42,13 @@ Previous version updates:
 
 ### How to use this patch:
 
+- NOTE: There is a recent ROM build already in the output folder. There is no need to build unless you make changes.
 - Download the code from GitHub (use the Code button at the top of the repository).
 - Navigate to where you downloaded the code. Open the 94_fight folder.
 - Open up the fight_patch.asm file in a file editor of your choice, and make adjustments to the testing variables (they are documented in there). Save your changes.
 - If you do not want to make changes, the ROM is already built and is in the output folder.
 - Run the build.bat file in the main 94_fight folder.
-- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.9.bin). 
+- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.95.bin). 
     If there is no new ROM file, the Build.txt file will list errors that occurred. Fix them and try again. Make sure to check the date on the ROM file, as if there was one from a previous build, it will still be there.
 - Load the ROM up and play!
 

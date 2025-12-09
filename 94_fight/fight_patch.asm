@@ -1,18 +1,20 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.9
+; Current Version - 0.95
 ; Version History:
-;   Version 0.1 - Initial version
-;   Version 0.2 - Added modifications due to Fight sprites addition
-;   Version 0.3 - Fix bugs with SetSPA jsrs
-;   Version 0.4 - Add Fight banner
-;   Version 0.5 - Include sprite_patch.asm, add Fighting attribute displays
-;   Version 0.6 - Add testing variables
-;   Version 0.7 - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
-;	Version 0.8 - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
+;   Version 0.1  - Initial version
+;   Version 0.2  - Added modifications due to Fight sprites addition
+;   Version 0.3  - Fix bugs with SetSPA jsrs
+;   Version 0.4  - Add Fight banner
+;   Version 0.5  - Include sprite_patch.asm, add Fighting attribute displays
+;   Version 0.6  - Add testing variables
+;   Version 0.7  - Adjust Newcode location to be compatible with 30 and 32 team ROMs (move to 2MB+ area). Note: ROM needs to be 3MB or 4MB!
+;	Version 0.8  - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
 ;   Version 0.81 - Fix bug with branching after returning from checkfight
-;   Version 0.9 - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
-;   Version 0.91 - Attempt to fix hesitation when KOing a player
+;   Version 0.9  - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
+;   Version 0.91 - Attempt to fix hesitation wh en KOing a player
+;   Version 0.95 - Attempt to fix hesitation part 2, also fix bug where Fight winner not always chosen (might be related), adjust Arcade settings to reduce fighting
+
 ;--MACROS--
 	include	scripts\macros.mac
 
@@ -230,14 +232,15 @@ Loopskip        equ 1          ; 93 Default is 0
 
 ; These tables are used for testing fighting. They affect how often a fight will occur, 
 ; and limit who can start a fight.
+; Arcade mode will use half of what is set for Regular mode in regards to chkftab.
 
 ; Minimum Total Checks Needed for a Fight (Home + Away Team)
-chkcnttab	dc.w 10,30,40,40			; < 2 min, 2-7 min, 7-20 min, >= 20 min (10,30,40,40)
+chkcnttab	dc.w 20,30,40,40			; < 2 min, 2-7 min, 7-20 min, >= 20 min (20,30,40,40)
 										; 93 default is 40 dec
 
 ; The minimum amount of ChksF for joining a fight (uses the player's Fgt attribute too). 
 ; Minimum ChksF to join a fight (Value/2)
-chkftab 	dc.w 4,8,16,16				; < 2 min, 2-7 min, 7-20 min, >= 20 min (4,8,16,16)
+chkftab 	dc.w 8,8,16,16			; < 2 min, 2-7 min, 7-20 min, >= 20 min (8,8,16,16)
 										; 93 default is 16 dec
 
 ; Minimum Fgt attribute to start a fight
@@ -245,11 +248,11 @@ fgtatttab	dc.w 10,6					; Indexed by Fight option (10,6)
 										; 93 default is 10 dec
 
 ; Minimum Fgt attribute to join a fight
-minfgttab	dc.b 2,0					; Indexed by Fight option (2,0)
+minfgttab	dc.b 2,2					; Indexed by Fight option (2,2)
 										; 93 default is 2 dec
 
 ; Value to RNG for injury, higher the less chance
-injtab  	dc.w 60,50					; Indexed by Fight option (60,50)
+injtab  	dc.w 60,40					; Indexed by Fight option (60,40)
 										; 93 default is 60 dec
 
 ;-----------------
@@ -377,8 +380,6 @@ checkfight:
 	movea.l #chkcnttab,a0	        ; move ChkCnt Table into a0
     clr.w   d0
 
-    cmpi.w  #2,(OptFight).w         ; check if arcade mode
-    beq.w   .chkcnt                 ; branch if equal
     moveq   #6,d0                   ; set to last entry in table
  	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
     bge.w   .chkcnt                 ; branch if >=
@@ -388,14 +389,19 @@ checkfight:
     subq    #2,d0                   ; sub 2 from index
     cmpi.w  #$78,(PerTimeTotal).w   ; compare to 2 minutes
     bgt.w   .chkcnt                 ; branch if >
-    moveq   #0,d0                   ; set to first entry in table
+    moveq   #0,d0                   ; set to last entry in table
 
 .chkcnt:
 ;	moveq   #$28,d0 	   	; 40 dec into d0 (code from 93)
 ;   moveq   #ChkCntLimit,d0 ; move limit into d0
 
-    move.w  (a0,d0.w),d0    ; move entry from chkcnt table into d0
-    movea.l (sp)+,a0        ; pop off stack original a0 value
+    move.w  (a0,d0.w),d0            ; move entry from chkcnt table into d0
+    movea.l (sp)+,a0                ; pop off stack original a0 value
+;    cmpi.w  #2,(OptFight).w         ; check if arcade mode
+;    bne.w   .chkcntcont             ; branch if not
+;    asr.b   #1,d0                   ; divide by 2
+
+.chkcntcont:
 	sub.w   (ChkCnt).w,d0   ; Sub CheckCnt from d0
 	bpl.w   .cont           ; branch if d0 positive
 	clr.w   d0
@@ -406,11 +412,11 @@ checkfight:
 
 ; new code to adjust starting Fight attribute based on fighting mode
     movem.l d1/a0,-(sp)        ; push to stack
-    movea.l #fgtatttab,a0	; move Fight Att table into a0
+    movea.l #fgtatttab,a0	   ; move Fight Att table into a0
     clr.w   d1
-    cmpi.w  #2,(OptFight).w         ; check if arcade mode
-    bne.w   .cfv                    ; branch if not
-    moveq   #2,d1                   ; move 2 to d1 if set
+    cmpi.w  #2,(OptFight).w    ; check if arcade mode
+    bne.w   .cfv               ; branch if not
+    moveq   #2,d1              ; move 2 to d1 if set
            
 
 .cfv:
@@ -555,8 +561,6 @@ ChkFightValue:
 	movea.l #chkftab,a0	            ; move ChkF Table into a0
     clr.w   d0
 
-    cmpi.w  #2,(OptFight).w         ; check if arcade mode
-    beq.w   .chkfcheck              ; branch if so
     moveq   #6,d0                   ; set to last entry in table
  	cmpi.w  #$4B0,(PerTimeTotal).w  ; compare to 20 minutes
     bge.w   .chkfcheck              ; branch if >=
@@ -566,13 +570,17 @@ ChkFightValue:
     subq    #2,d0                   ; sub 2 from index
     cmpi.w  #$78,(PerTimeTotal).w   ; compare to 2 minutes
     bgt.w   .chkfcheck              ; branch if >=
-    moveq   #0,d0                   ; set to first entry in table
+    moveq   #2,d0                   ; set to last entry in table
 
 .chkfcheck:
-    move.w  (a0,d0.w),d0    ; move entry from chkf table into d0
-    movea.l (sp)+,a0        ; pop off stack original a0 value
-    add.b   d0,d1           ; add d0 to d1
+    move.w  (a0,d0.w),d0            ; move entry from chkf table into d0
+    movea.l (sp)+,a0                ; pop off stack original a0 value
+    cmpi.w  #2,(OptFight).w         ; check if arcade mode
+    bne.w   .chkfcont               ; branch if not
+    asr.b   #1,d0                   ; divide by 2
 
+.chkfcont:
+    add.b   d0,d1           ; add d0 to d1
     cmp.b   $74(a2),d1      ; compare a2's fight value to d1
 	bgt.w   rtss            ; exit if d1 is greater than
 	bset    #0,$63(a2)      ; set fight bit a2
@@ -811,18 +819,19 @@ chkhit:
 	bra.w   .ex
 
 .FightFall:                              
-;	movem.l a1,-(sp)        ; push to stack
-;	movea.l #PenBuf,a1 		; PenBuf
+	movem.l a1,-(sp)        ; push to stack
+	movea.l #PenBuf-2,a1 	; PenBuf - 2 (Fix for PenFighting* and hesitation?)
+    moveq   #$1F,d0         ; used to iterate through PenBuf (MaxPen - 1)
 .cont:                                
-;	addq.w  #2,a1           ; add 2 to a1
-;	cmpi.b  #$26,(a1)  		; compare 26 to a1 (PenFighting)
-;	bne.s   .cont
-;	move.b  1(a1),d0        ; move 1(a1) into d0
-;	andi.w  #$F,d0          ; pass first 4 bits of d0
-;	cmp.w   $52(a0),d0      ; compare SCnum to d0
-;	bne.s   .cont           ; branch if not equal
-;	move.b  #$28,(a1)  		; move 40 dec into a1 position (PenFighting*)
-;	movem.l (sp)+,a1        ; pop from stack
+	addq.w  #2,a1           ; add 2 to a1
+	cmpi.b  #$26,(a1)  		; compare 26 to a1 (PenFighting)
+	bne.s   .cont
+	move.b  1(a1),d0        ; move 1(a1) into d0
+	andi.w  #$F,d0          ; pass first 4 bits of d0
+	cmp.w   $52(a0),d0      ; compare SCnum to d0
+	bne.s   .cont           ; branch if not equal
+	move.b  #$28,(a1)  		; move 40 dec into a1 position (PenFighting*)
+	movem.l (sp)+,a1        ; pop from stack
 	move.w  #$3C,(PenCntDwn).w ; move 60 dec into PenCntDown
 	move.w  #$FFFF,$44(a0)  ; move -1 into temp3
 	addi.w  #$258,(crowdlevel).w ; add to crowd

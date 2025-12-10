@@ -1,6 +1,6 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.95
+; Current Version - 0.96
 ; Version History:
 ;   Version 0.1  - Initial version
 ;   Version 0.2  - Added modifications due to Fight sprites addition
@@ -14,6 +14,7 @@
 ;   Version 0.9  - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
 ;   Version 0.91 - Attempt to fix hesitation wh en KOing a player
 ;   Version 0.95 - Attempt to fix hesitation part 2, also fix bug where Fight winner not always chosen (might be related), adjust Arcade settings to reduce fighting
+;   Version 0.96 - Remove troubleshooting jump over RNG code, set RNG starting value for Arcade injury to 45
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -252,7 +253,7 @@ minfgttab	dc.b 2,2					; Indexed by Fight option (2,2)
 										; 93 default is 2 dec
 
 ; Value to RNG for injury, higher the less chance
-injtab  	dc.w 60,40					; Indexed by Fight option (60,40)
+injtab  	dc.w 60,45					; Indexed by Fight option (60,45)
 										; 93 default is 60 dec
 
 ;-----------------
@@ -836,7 +837,7 @@ chkhit:
 	move.w  #$FFFF,$44(a0)  ; move -1 into temp3
 	addi.w  #$258,(crowdlevel).w ; add to crowd
 	addi.w  #$1E,(CwdExciteLvl).w ; add to crowd excite
-    bra.w   .fall           ; added for troubleshooting
+;   bra.w   .fall           ; added for troubleshooting
 ;	moveq   #$3C,d0    		; move 60 dec into d0 (code from 93)
 ;   moveq   #InjRNG,d0      ; Value for Injury RNG
 

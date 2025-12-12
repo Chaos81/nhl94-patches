@@ -20,16 +20,18 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 0.96 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.97 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
+    - Fixed reverse angle replay bug where the fighters wouldn't flip in the X direction
+
+Previous version updates:
     - Fixed bug causing hesitation at times when player is knocked down. This bug fix also fixes the problem where the fight winner isn't always declared after a knock down.
     - Adjust Arcade Mode settings to cause less frequent fights.
     - Fixed bug with injuries from fight
 
-Previous version updates:
     - Added menu option for fighting (Off, On, On - Arcade Mode) thanks to McMarkis - [NHL94 Gens Patches](https://github.com/Mhopkinsinc/NHL94-Gens-Patches/tree/main)
     - Added Arcade Mode - more fights (lower # of total checks (10), lower Fgt attribute needed (6 vs. 10), less minimum checks needed, slightly higher chance of game injury
 

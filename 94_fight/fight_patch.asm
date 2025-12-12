@@ -15,6 +15,7 @@
 ;   Version 0.91 - Attempt to fix hesitation wh en KOing a player
 ;   Version 0.95 - Attempt to fix hesitation part 2, also fix bug where Fight winner not always chosen (might be related), adjust Arcade settings to reduce fighting
 ;   Version 0.96 - Remove troubleshooting jump over RNG code, set RNG starting value for Arcade injury to 45
+;   Version 0.97 - Fix Reverse Angle replay bug (update fight frames check in SetRCords function)
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -53,6 +54,8 @@ doinputPatch 	equ $B258		; Address in doinput to patch code
 checkcxPatch   	equ $13B16    	; Address in checkcx to patch code
 asstabPatch		equ $18DCC		; Address for assfight on asstab to patch code
 fgtdispPatch	equ $8E3A		; Address to change math for Fighting attribute display
+revreplayPatch1 equ $A77C       ; Address to fix reverse replay for fight frames
+revreplayPatch2 equ $A784       ; Address to fix reverse replay for fight frames
 attdispPatch1	equ $84DA		; Pointers to update to new Attrib Disp strings
 attdispPatch2	equ $8BD6
 attdispPatch3	equ $FC85C		
@@ -204,9 +207,18 @@ back:
     org fgtdispPatch
         jmp fgtdisp
 
+; Fix the comparison values for reverse replay flip of fight frames
+
+    org revreplayPatch1
+        cmp.w #$34F,d2          ; check if frame is before fight frames
+    
+    org revreplayPatch2
+        cmp.w #$366,d2          ; check if frame is after fight frames
+
+
 ; Update Attribute Menu Lists
 
- org attdispPatch1
+    org attdispPatch1
         movea.l #NewAttribList, a1
 
     org attdispPatch2

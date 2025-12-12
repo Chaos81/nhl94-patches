@@ -69,8 +69,8 @@
 		nop
 
 ;Remove Old Menu Items (Reclaim Space)
-    org $F7D04								; <-- Main Menu Items
-    	FILL_FF $36C
+    ;org $F7D04								; <-- Main Menu Items
+    ; 	FILL_FF $36C
 	
-	org $F80D4								; <-- Sub Menu Items
-    	FILL_FF $94
+    ;org $F80D4								; <-- Sub Menu Items
+    ;	FILL_FF $94

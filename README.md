@@ -20,14 +20,16 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 0.97 (currently in testing phase, not a finalized patch)
+## 94_fight patch - Version 0.98 (currently in testing phase, not a finalized patch)
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
-    - Fixed reverse angle replay bug where the fighters wouldn't flip in the X direction
+    - Fixed reverse angle replay bug where glove/stick location wouldn't change.
 
 Previous version updates:
+    - Fixed reverse angle replay bug where the fighters wouldn't flip in the X direction.
+
     - Fixed bug causing hesitation at times when player is knocked down. This bug fix also fixes the problem where the fight winner isn't always declared after a knock down.
     - Adjust Arcade Mode settings to cause less frequent fights.
     - Fixed bug with injuries from fight
@@ -51,7 +53,7 @@ Previous version updates:
 - Open up the fight_patch.asm file in a file editor of your choice, and make adjustments to the testing variables (they are documented in there). Save your changes.
 - If you do not want to make changes, the ROM is already built and is in the output folder.
 - Run the build.bat file in the main 94_fight folder.
-- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.95.bin). 
+- Open the output folder. Inside there should be 2 files: a Build.txt file and the ROM (nhl94_fgt_v0.98.bin). 
     If there is no new ROM file, the Build.txt file will list errors that occurred. Fix them and try again. Make sure to check the date on the ROM file, as if there was one from a previous build, it will still be there.
 - Load the ROM up and play!
 

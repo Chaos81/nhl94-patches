@@ -1,6 +1,6 @@
 ; fight_patch.asm - Add Fighting to NHL94 Genesis
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 0.96
+; Current Version - 0.98
 ; Version History:
 ;   Version 0.1  - Initial version
 ;   Version 0.2  - Added modifications due to Fight sprites addition
@@ -16,6 +16,7 @@
 ;   Version 0.95 - Attempt to fix hesitation part 2, also fix bug where Fight winner not always chosen (might be related), adjust Arcade settings to reduce fighting
 ;   Version 0.96 - Remove troubleshooting jump over RNG code, set RNG starting value for Arcade injury to 45
 ;   Version 0.97 - Fix Reverse Angle replay bug (update fight frames check in SetRCords function)
+;   Version 0.98 - Fix Reverse Angle replay bug for the glove/stick position while fighting
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -54,8 +55,10 @@ doinputPatch 	equ $B258		; Address in doinput to patch code
 checkcxPatch   	equ $13B16    	; Address in checkcx to patch code
 asstabPatch		equ $18DCC		; Address for assfight on asstab to patch code
 fgtdispPatch	equ $8E3A		; Address to change math for Fighting attribute display
-revreplayPatch1 equ $A77C       ; Address to fix reverse replay for fight frames
-revreplayPatch2 equ $A784       ; Address to fix reverse replay for fight frames
+revreplayPatch1 equ $A724       ; Address to fix reverse replay for fight frames
+revreplayPatch2 equ $A77C       ; Address to fix reverse replay for fight frames
+revreplayPatch3 equ $A784       ; Address to fix reverse replay for fight frames
+uppadsPatch     equ $16648      ; Address in uppads to patch code
 attdispPatch1	equ $84DA		; Pointers to update to new Attrib Disp strings
 attdispPatch2	equ $8BD6
 attdispPatch3	equ $FC85C		
@@ -137,6 +140,7 @@ pflags2 		equ $63
 
 gmode			equ $FFFFC2EA			; Game mode flags
 sflags			equ $FFFFC2EC			; Status flags
+repflag         equ $FFFFC2F4           ; Reverse replay flags
 
 collflag		equ $FFFFBFA0			; Collision flag
 
@@ -150,6 +154,7 @@ ChkCnt			equ $FFFFC46E			; Check counts
 InjCntDown		equ $FFFFC3EC
 
 glovecords		equ $FFFFBEE2			; coord of glove/sticks (fighting)
+glovestruct     equ $FFFFBE5C           ; struct for glove/sticks
 
 xc1				equ $FFFFBF8E			; RAM Location for screen locks				
 yc1				equ $FFFFBF90		
@@ -178,46 +183,51 @@ OptFight        equ $FFFFDF00           ; 0 = Off, 1 = On, 2 = On, Arcade
 ; NOTE: - org needs to be tabbed once!
 
 ; Patch doinput subroutine - need to replace 10 bytes
-	org doinputPatch			; Set to patch location
-	jmp chkfightinput			; JMP to new code (6 bytes long)
-back:
-	nop							; Take up 4 bytes of space
-	nop
+	org doinputPatch			    ; Set to patch location
+	    jmp chkfightinput			; JMP to new code (6 bytes long)
+    back:
+	    nop							; Take up 4 bytes of space
+	    nop
 
 
 
 ; Patch checkcx subroutine
-	org checkcxPatch			; Set to patch location need to replace 12 bytes 
-	jsr 	cxchecks			; JSR to the new code (6 bytes long)
-	bra.s	*+6				    ; Branch to the next 94 code (at $13B22) (4 bytes long)
-	nop                         ; take up 4 bytes of space
-    nop					
+	org checkcxPatch			    ; Set to patch location need to replace 12 bytes 
+	    jsr 	cxchecks			; JSR to the new code (6 bytes long)
+	    bra.s	*+6				    ; Branch to the next 94 code (at $13B22) (4 bytes long)
+	    nop                         ; take up 4 bytes of space
+        nop					
 
 ; Patch assfight and assfwatch on asstab
 	org asstabPatch
-	dc.l assfight
-	dc.l assfwatch
+	    dc.l assfight
+	    dc.l assfwatch
 
 ; Patch to update the Begin subroutine RAM clearing loop
     org beginPatch
-    cmpa.w #$DF02,a0            ; end loop after fight RAM option
+        cmpa.w #$DF02,a0        ; end loop after fight RAM option
 
 ; Change the math for Fighting attribute display
-
     org fgtdispPatch
         jmp fgtdisp
 
 ; Fix the comparison values for reverse replay flip of fight frames
-
     org revreplayPatch1
-        cmp.w #$34F,d2          ; check if frame is before fight frames
+        cmp.w #$367,d2          ; check if frame is after final frame
     
     org revreplayPatch2
-        cmp.w #$366,d2          ; check if frame is after fight frames
+        cmp.w #$34F,d2          ; check if frame is before fight frames
+    
+    org revreplayPatch3
+        cmp.w #$367,d2          ; check if frame is after fight frames
 
+; Patch uppads subroutine
+    org uppadsPatch             ; Set to patch location, need to replace 38 bytes
+        jsr upgloves            ; JSR to the new code (6 bytes long)
+        bra.w *+32              ; Branch to the next 94 code (4 bytes long)
+        dcb.b $1C,$FF           ; Pad FF for 28 bytes
 
 ; Update Attribute Menu Lists
-
     org attdispPatch1
         movea.l #NewAttribList, a1
 
@@ -1105,14 +1115,49 @@ fgtdisp:
     divu.w  d1,d0           ; divide by d1 (14 dec)
     jmp     DispAttribjmp   ; jump to DispAttribValue
 
+upgloves:
+; updates Glove/Stick frame position, accounts for reverse replay
+
+    movea.l #glovestruct,a0     ; move glove/stick struct into a0
+    st      $18(a0)             ; set Zpos
+    bclr    #3,4(a0)            ; clear X flip attribute
+    move.b  (glovecords).w,d0   ; move glovecords X into d0
+    beq.w   .ex                 ; branch if 0
+    move.b  (glovecords+1).w,d1 ; move glovecords Y into d1
+
+    ext.w   d0                  ; sign extend d0
+    asl.w   #2,d0               ; mult d0 by 4
+    btst    #4,(repflag).w      ; check rev replay flag
+    beq.w   .p                  ; branch if normal
+    neg.w   d0                  ; make d0 negative
+    bset    #3,4(a0)            ; set X flip attribute
+.p:
+    move.w  d0,(a0)             ; move d0 into Xpos
+    ext.w   d1                  ; sign extend d1
+    asl.w   #2,d1               ; mult d1 by 4
+    btst    #4,(repflag).w      ; check rev replay flag
+    beq.w   .p1                 ; branch if normal
+    neg.w   d1                  ; make d1 negative
+.p1:
+    move.w  d1,$14(a0)          ; move d1 into Ypos
+    clr.w   $18(a0)             ; clear Zpos
+.ex:
+    rts
+; End of function upgloves
+
+
+
+
 
 ;------ Include sprite_patch.asm ------
     include sprite_patch.asm            ; Add updated sprites and animations, move and update tables associated with sprites and animations
 
-;    align 2                            ; Doesn't compile
 
 NewAttribList                           ; insert new attribute list from NHLPA93
     incbin 93_Tables\AttribHdr.bin
+
+
+
 
 ;------ Include McMarkis' menu_patch.asm ------
 

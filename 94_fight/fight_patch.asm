@@ -12,7 +12,7 @@
 ;	Version 0.8  - Add adjustment of ChkCntLimit and MinChksF based on period length, adjust Fight attrib display to remove attribute curve
 ;   Version 0.81 - Fix bug with branching after returning from checkfight
 ;   Version 0.9  - Add McMarkis' menu item code to add fighting toggle to main menu, set up Arcade mode
-;   Version 0.91 - Attempt to fix hesitation wh en KOing a player
+;   Version 0.91 - Attempt to fix hesitation when KOing a player
 ;   Version 0.95 - Attempt to fix hesitation part 2, also fix bug where Fight winner not always chosen (might be related), adjust Arcade settings to reduce fighting
 ;   Version 0.96 - Remove troubleshooting jump over RNG code, set RNG starting value for Arcade injury to 45
 ;   Version 0.97 - Fix Reverse Angle replay bug (update fight frames check in SetRCords function)
@@ -194,9 +194,8 @@ OptFight        equ $FFFFDF00           ; 0 = Off, 1 = On, 2 = On, Arcade
 ; Patch checkcx subroutine
 	org checkcxPatch			    ; Set to patch location need to replace 12 bytes 
 	    jsr 	cxchecks			; JSR to the new code (6 bytes long)
-	    bra.s	*+6				    ; Branch to the next 94 code (at $13B22) (4 bytes long)
-	    nop                         ; take up 4 bytes of space
-        nop					
+	    bra.w	*+6				    ; Branch to the next 94 code (at $13B22) (4 bytes long)
+        dc.w    $FFFF               ; take up 2 bytes of space
 
 ; Patch assfight and assfwatch on asstab
 	org asstabPatch
@@ -223,7 +222,7 @@ OptFight        equ $FFFFDF00           ; 0 = Off, 1 = On, 2 = On, Arcade
 
 ; Patch uppads subroutine
     org uppadsPatch             ; Set to patch location, need to replace 38 bytes
-        jsr upgloves            ; JSR to the new code (6 bytes long)
+        jsr   upgloves            ; JSR to the new code (6 bytes long)
         bra.w *+32              ; Branch to the next 94 code (4 bytes long)
         dcb.b $1C,$FF           ; Pad FF for 28 bytes
 

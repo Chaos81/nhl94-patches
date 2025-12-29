@@ -18,7 +18,8 @@ A program that will apply the above patches to a any given ROM. This is the easi
 The program requires Python 3.10+ to be installed on your PC.
 
 - Make changes as needed to the scripts/fight_patchc.asm file (i.e. set the default menu option for fighting)
-- Run the custom_patch.py. Follow the instructions.
+- Run the custom_patch.py in a command prompt window (type "python", then a space (no quotes), then drag the custom_patch.py to the window and hit ENTER), or however you start python scripts on your PC. 
+- Follow the instructions.
 - Drag and drop your custom ROM into the console screen when requested, and hit ENTER.
 - The script will generate the necessary files needed.
 - Run the buildfight.bat file to build the new version of your ROM. It will be in the output folder when finished. If there is no ROM, check the build.log file for errors.

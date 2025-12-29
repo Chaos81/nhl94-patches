@@ -1,0 +1,48 @@
+;----------------------------------------------
+;Reclaim Empty Space
+;----------------------------------------------
+FILL_FF macro COUNT
+    rept COUNT
+        dc.b $FF
+    endr
+    endm
+
+;----------------------------------------------
+;Forces Short Addressing mode for BCLR opcode
+;----------------------------------------------
+BCLR_SHORT  MACRO bit, addr
+    dc.b $08, $B8
+    dc.w bit
+    dc.w addr
+    ENDM
+
+;----------------------------------------------
+; Menu Macro
+; Input: A string in quotes
+; Output: 00, Length of string + 3, the string itself, and a null terminator
+; Example: STRING 'Play Mode    ' outputs:
+; 00 10 (00 = header byte, 10 = length + 3) followed by string bytes and 00 terminator
+;----------------------------------------------
+Menu MACRO
+    dc.b 0                 ; Leading 00 byte (header byte)
+    dc.b \@end-\@string+3  ; Length of string + 3 (includes length byte and terminator)
+\@string:
+    dc.b \1                ; The string itself
+\@end:
+    dc.b 0                 ; String terminator (null byte)
+    ENDM
+
+;----------------------------------------------
+; SubMenu Macro
+; Input: A string in quotes
+; Output: 00, Length of string + 2, the string itself
+; Example: STRING 'Play Mode    ' outputs:
+; 00 10 (00 = header byte, 10 = length + 2)
+;----------------------------------------------
+SubMenu MACRO
+    dc.b 0                 ; Leading 00 byte (header byte)
+    dc.b \@end-\@string+2  ; Length of string + 2 (includes length byte and terminator)
+\@string:
+    dc.b \1                ; The string itself
+\@end:    
+    ENDM

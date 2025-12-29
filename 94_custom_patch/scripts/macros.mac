@@ -1,0 +1,8 @@
+;----------------------------------------------
+;Forces Short Addressing mode for BCLR opcode
+;----------------------------------------------
+BCLR_SHORT  MACRO bit, addr
+    dc.b $08, $B8
+    dc.w bit
+    dc.w addr
+    ENDM

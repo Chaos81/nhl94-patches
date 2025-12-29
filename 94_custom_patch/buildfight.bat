@@ -9,4 +9,4 @@ if not exist "%workspaceFolder%\output" (
     mkdir "%workspaceFolder%\output"
 )
 
-assembler\Assembler.exe /p /m /g /o d- /o s- /o r+ /o l+ /o l. /o ow+ /o op- /o os+ /o oz+ /o omq- /o oaq+ /o osq+  scripts\fight_patch.asm,output\nhl94_fight_v1.bin > output\Build.log
+assembler\Assembler.exe /p /m /g /o d- /o s- /o r+ /o l+ /o l. /o ow+ /o op- /o os+ /o oz+ /o omq- /o oaq+ /o osq+  scripts\fight_patchc.asm,output\custom_fight_v1.bin > output\Build.log

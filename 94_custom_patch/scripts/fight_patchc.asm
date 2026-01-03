@@ -1,6 +1,6 @@
 ; fight_patchc.asm - Add Fighting to NHL94 Genesis custom ROM
 ; Created by chaos with help from McMarkis and AbdulBCRT
-; Current Version - 1.0
+; Current Version - 1.01
 ; Version History:
 ;   Version 0.1  - Initial version
 ;   Version 0.2  - Added modifications due to Fight sprites addition
@@ -19,6 +19,7 @@
 ;   Version 0.98 - Fix Reverse Angle replay bug for the glove/stick position while fighting
 ;   Version 1.0  - Official release, add change name of ROM and serial #, add code for new splash screens in 30 team ROM location
 ;                - Modify for custom ROM, expand the ROM to 3MB included, add default Fight option
+;   Version 1.01 - Fix bug with shootout mode attribute list display
 
 ;--MACROS--
 	include	scripts\macros.mac
@@ -238,16 +239,16 @@ OptFight        equ $FFFFDF00           ; 0 = Off, 1 = On, 2 = On, Arcade
 
 ; Update Attribute Menu Lists
     org attdispPatch1
-        movea.l #NewAttribList, a1
+        movea.l #NewAttribList,a1
 
     org attdispPatch2
-        movea.l #NewAttribList, a1
+        movea.l #NewAttribList,a1
 
     org attdispPatch3
-        movea.l #NewAttribList+16, a1
+        movea.l #NewAttribList+22,a1
 
     org attdispPatch4
-        movea.l #NewAttribList+16, a1
+        cmpa.l #NewAttribList+22,a1
 
 ; Patch Default Menu subroutine
 

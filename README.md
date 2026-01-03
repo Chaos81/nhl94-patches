@@ -40,11 +40,14 @@ The script modifies the 94 code that writes or reads to SRAM to use this flag, a
 The location needs to be in the lower 2MB, so free space is needed. The code currently is place at $1F9A00 (which looks like empty space in a 32-team ROM), and takes up about 400 bytes.
 
 
-## 94_fight patch - Version 1.0 (currently in testing phase)
+## 94_fight patch - Version 1.01
 
 A patch that adds the NHLPA93 sprites and fight code to the NHL94 ROM.
 
 Current version updates:
+- Fixed bug where game would freeze when changing shootout lineup in Shootout mode.
+
+Previous version updates:
 - Official release
 - Included 94_expand in the fight patch. Fight patch will do it all (expand ROM to 3MB, apply fight and sprite patches)
 - Change the name of the ROM and serial # in the header.
@@ -52,7 +55,6 @@ Current version updates:
 - Add a default setting for the fight option in the Main Menu
 - Fix Hot Spots for fight frames (needed to add empty frames for the player arrows before adding fight frame Hot Spots)
 
-Previous version updates:
 - Fixed reverse angle replay bug where glove/stick location wouldn't change.
 
 - Fixed reverse angle replay bug where the fighters wouldn't flip in the X direction.
